@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}About — Emotion Detection{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-book me-2"></i>About Facial Expression Recognition
+    </div>
+    <div class="card-body p-4">
+
+        <!-- Introduction -->
+        <div class="conclusion-section">
+            <h4><i class="bi bi-lightbulb me-2"></i>What is Facial Expression Recognition?</h4>
+            <p>
+                Facial Expression Recognition (FER) is a branch of computer vision and artificial intelligence
+                that involves identifying human emotions based on facial muscle movements and expressions.
+                It combines <strong>face detection</strong> (locating a face in an image) with
+                <strong>emotion classification</strong> (determining which emotion the face conveys).
+            </p>
+            <p>
+                The study of facial expressions dates back to Charles Darwin's work in the 19th century
+                and was further developed by psychologists Paul Ekman and Wallace Friesen, who proposed
+                that certain basic emotions — such as happiness, sadness, anger, fear, surprise, and
+                disgust — are universally expressed across cultures.
+            </p>
+        </div>
+
+        <!-- How This System Works -->
+        <div class="conclusion-section">
+            <h4><i class="bi bi-gear me-2"></i>How This System Works</h4>
+
+            <h5 class="mt-3">1. Face Detection (OpenCV Haar Cascades)</h5>
+            <p>
+                The system uses <strong>OpenCV's Haar Cascade classifier</strong> to detect faces in images
+                and video frames. Haar Cascades use a set of pre-trained features (edge, line, and rectangle
+                patterns) to identify face-like regions in an image by scanning at multiple scales. This method,
+                proposed by Viola and Jones (2001), is computationally efficient and works well for frontal
+                face detection in real-time applications.
+            </p>
+
+            <h5 class="mt-3">2. Emotion Classification (Convolutional Neural Network)</h5>
+            <p>
+                Once a face is detected and cropped from the image, it is preprocessed (resized to 48×48 pixels,
+                converted to grayscale, normalized) and fed into a <strong>Convolutional Neural Network (CNN)</strong>
+                trained on the <strong>FER-2013 dataset</strong>. The FER-2013 dataset contains approximately
+                35,000 grayscale facial images labeled with one of seven emotion categories.
+            </p>
+            <p>
+                The CNN learns hierarchical features from the facial images — from low-level edges and textures
+                to high-level patterns like eye shapes, mouth curves, and brow positions — to classify the
+                expression into one of seven categories:
+            </p>
+            <div class="row g-2 mb-3">
+                {% for emotion in ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral'] %}
+                <div class="col-auto">
+                    <span class="badge-emotion badge-{{ emotion }} px-3 py-2">{{ emotion }}</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <h5 class="mt-3">3. Result Storage and Export</h5>
+            <p>
+                Detection results are stored in an <strong>SQLite database</strong> with timestamps, confidence
+                scores, and references to the processed images. Users can view their detection history, export
+                results to Excel files for further analysis, and review live detection session summaries.
+            </p>
+        </div>
+
+        <!-- Applications -->
+        <div class="conclusion-section">
+            <h4><i class="bi bi-grid me-2"></i>Applications of Facial Expression Recognition</h4>
+            <div class="row g-3 mt-2">
+                <div class="col-md-4 col-6">
+                    <div class="application-card">
+                        <i class="bi bi-display"></i>
+                        <h6>Human-Computer Interaction</h6>
+                        <small class="text-muted">Adaptive interfaces that respond to user emotions</small>
+                    </div>
+                </div>
+                <div class="col-md-4 col-6">
+                    <div class="application-card">
+                        <i class="bi bi-heart-pulse"></i>
+                        <h6>Healthcare Research</h6>
+                        <small class="text-muted">Monitoring patient emotional states and pain levels</small>
+                    </div>
+                </div>
+                <div class="col-md-4 col-6">
+                    <div class="application-card">
+                        <i class="bi bi-brain"></i>
+                        <h6>Psychology Research</h6>
+                        <small class="text-muted">Studying emotional responses in controlled experiments</small>
+                    </div>
+                </div>
+                <div class="col-md-4 col-6">
+                    <div class="application-card">
+                        <i class="bi bi-shield-check"></i>
+                        <h6>Security Applications</h6>
+                        <small class="text-muted">Behavioral analysis in surveillance systems</small>
+                    </div>
+                </div>
+                <div class="col-md-4 col-6">
+                    <div class="application-card">
+                        <i class="bi bi-shop"></i>
+                        <h6>Marketing & CX</h6>
+                        <small class="text-muted">Measuring customer reactions to products and ads</small>
+                    </div>
+                </div>
+                <div class="col-md-4 col-6">
+                    <div class="application-card">
+                        <i class="bi bi-car-front"></i>
+                        <h6>Driver Monitoring</h6>
+                        <small class="text-muted">Detecting drowsiness and distraction while driving</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="conclusion-section">
+            <h4><i class="bi bi-exclamation-circle me-2"></i>Important Disclaimer</h4>
+            <div class="alert alert-warning">
+                <p class="mb-2">
+                    <strong>This system is an academic demonstration of facial expression classification.</strong>
+                </p>
+                <p class="mb-2">
+                    It is important to understand that detected "emotions" are based on statistical patterns
+                    learned from a labeled dataset of facial images. The system classifies visible facial
+                    expressions, which may not always accurately reflect a person's true internal emotional state.
+                </p>
+                <p class="mb-0">
+                    Factors such as cultural differences, individual expression habits, lighting conditions,
+                    image quality, and the inherent limitations of the training data all affect accuracy.
+                    This system should not be used to make consequential decisions about individuals.
+                </p>
+            </div>
+        </div>
+
+        <!-- Technology Stack -->
+        <div class="conclusion-section">
+            <h4><i class="bi bi-stack me-2"></i>Technology Stack</h4>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr style="background: var(--primary); color: white;">
+                            <th>Component</th>
+                            <th>Technology</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Backend</td><td>Python, Flask</td><td>Web application framework</td></tr>
+                        <tr><td>Database</td><td>SQLite, SQLAlchemy</td><td>Data persistence and ORM</td></tr>
+                        <tr><td>Face Detection</td><td>OpenCV</td><td>Haar Cascade face detection</td></tr>
+                        <tr><td>Emotion Model</td><td>TensorFlow/Keras</td><td>CNN emotion classification</td></tr>
+                        <tr><td>Frontend</td><td>HTML5, CSS3, JS, Bootstrap 5</td><td>User interface</td></tr>
+                        <tr><td>Export</td><td>openpyxl</td><td>Excel report generation</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

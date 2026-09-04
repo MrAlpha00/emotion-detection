@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Error {{ error_code }} — Emotion Detection{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="card auth-card text-center">
+        <div class="card-header" style="background: linear-gradient(135deg, #E74C3C 0%, #C0392B 100%);">
+            <h1 class="display-4 mb-0">{{ error_code }}</h1>
+            <p class="mb-0">{{ error_title }}</p>
+        </div>
+        <div class="card-body p-4">
+            <p class="text-muted mb-4">{{ error_message }}</p>
+            <a href="{{ url_for('dashboard.home') if current_user.is_authenticated else url_for('auth.login') }}"
+               class="btn btn-accent">
+                <i class="bi bi-house me-1"></i>
+                {{ 'Go to Dashboard' if current_user.is_authenticated else 'Go to Login' }}
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

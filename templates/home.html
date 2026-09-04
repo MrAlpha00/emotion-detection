@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Emotion Detection{% endblock %}
+
+{% block content %}
+<!-- Welcome Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body p-4">
+                <h2 class="mb-1">
+                    <i class="bi bi-hand-wave me-2" style="color: var(--accent);"></i>
+                    Welcome, {{ current_user.username }}!
+                </h2>
+                <p class="text-muted mb-0">
+                    Detect emotions from facial expressions using image upload, camera capture, or live webcam feed.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Model Status Banner -->
+{% if not model_available %}
+<div class="model-status-banner model-unavailable">
+    <h5 class="mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>Emotion Model Unavailable</h5>
+    <p class="mb-1">{{ model_status_message }}</p>
+    <p class="mb-0"><small>
+        <strong>Expected model path:</strong> <code>model/emotion_model.h5</code><br>
+        Download a FER-2013 trained model and place it in the <code>model/</code> directory, then restart the application.
+    </small></p>
+</div>
+{% endif %}
+
+<!-- Stats Cards -->
+<div class="row mb-4 g-3">
+    <div class="col-md-4">
+        <div class="stat-card bg-primary-gradient">
+            <div class="stat-value">{{ total_detections }}</div>
+            <div class="stat-label">Total Detections</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card bg-success-gradient">
+            <div class="stat-value">{{ total_sessions }}</div>
+            <div class="stat-label">Live Sessions</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card bg-info-gradient">
+            {% if most_common_emotion %}
+            <div class="stat-value" style="font-size: 1.75rem;">{{ most_common_emotion }}</div>
+            {% else %}
+            <div class="stat-value" style="font-size: 1.5rem;">—</div>
+            {% endif %}
+            <div class="stat-label">Most Common Emotion</div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4 g-3">
+    <div class="col-6 col-md-3">
+        {% if model_available %}
+        <a href="{{ url_for('detection.detect_page') }}" class="action-btn">
+            <i class="bi bi-camera-fill"></i>
+            <span class="action-label">Detect Emotion</span>
+        </a>
+        {% else %}
+        <div class="action-btn disabled" title="Emotion model is not available">
+            <i class="bi bi-camera-fill"></i>
+            <span class="action-label">Detect Emotion</span>
+            <small class="d-block text-muted mt-1">Model required</small>
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-6 col-md-3">
+        {% if model_available %}
+        <a href="{{ url_for('detection.live_detection_page') }}" class="action-btn">
+            <i class="bi bi-webcam-fill"></i>
+            <span class="action-label">Live Camera</span>
+        </a>
+        {% else %}
+        <div class="action-btn disabled" title="Emotion model is not available">
+            <i class="bi bi-webcam-fill"></i>
+            <span class="action-label">Live Camera</span>
+            <small class="d-block text-muted mt-1">Model required</small>
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{{ url_for('dashboard.profile') }}" class="action-btn">
+            <i class="bi bi-clock-history"></i>
+            <span class="action-label">View History</span>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{{ url_for('export.export_results') }}" class="action-btn">
+            <i class="bi bi-file-earmark-excel-fill"></i>
+            <span class="action-label">Export Excel</span>
+        </a>
+    </div>
+</div>
+
+<!-- Recent Detections -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-clock me-2"></i>Recent Detections
+    </div>
+    <div class="card-body">
+        {% if recent_detections %}
+        <div class="table-responsive">
+            <table class="table history-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Type</th>
+                        <th>Emotion</th>
+                        <th>Confidence</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in recent_detections %}
+                    <tr>
+                        <td>{{ d.detected_at.strftime('%d %b %Y, %I:%M %p') if d.detected_at else '—' }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'primary' if d.detection_type == 'image' else 'info' }}">
+                                {{ d.detection_type|capitalize }}
+                            </span>
+                        </td>
+                        <td><span class="badge-emotion badge-{{ d.emotion }}">{{ d.emotion }}</span></td>
+                        <td>{{ '%.2f'|format(d.confidence) }}%</td>
+                        <td>
+                            <a href="{{ url_for('detection.view_saved_result', detection_id=d.id) }}"
+                               class="btn btn-sm btn-outline-accent">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-emoji-neutral"></i>
+            <h5>No detection results yet</h5>
+            <p>Start by detecting emotions from an image or live camera feed.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Project Description -->
+<div class="card mt-4">
+    <div class="card-body p-4">
+        <h5><i class="bi bi-info-circle me-2" style="color: var(--accent);"></i>About This Project</h5>
+        <p class="text-muted mb-0">
+            This application demonstrates <strong>Facial Expression Recognition</strong> using computer vision
+            and deep learning. It uses <strong>OpenCV</strong> for face detection (Haar Cascade) and a
+            <strong>Convolutional Neural Network (CNN)</strong> trained on the FER-2013 dataset to classify
+            facial expressions into seven emotion categories: Angry, Disgust, Fear, Happy, Sad, Surprise, and Neutral.
+            <a href="{{ url_for('dashboard.conclusion') }}" class="text-decoration-none">Learn more →</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

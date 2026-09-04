@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Live Detection — Emotion Detection{% endblock %}
+
+{% block content %}
+<!-- Model unavailable warning -->
+{% if not model_available %}
+<div class="model-status-banner model-unavailable mb-4">
+    <h5 class="mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>Emotion Model Unavailable</h5>
+    <p class="mb-1">{{ model_status_message }}</p>
+    <p class="mb-0"><small>Live detection is disabled until a valid model is loaded.</small></p>
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <!-- Camera Feed -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-webcam me-2"></i>Live Emotion Detection</span>
+                <span id="live-recording-badge" style="display: none;">
+                    <span class="live-indicator"></span>LIVE
+                </span>
+            </div>
+            <div class="card-body p-3">
+                <div class="camera-container">
+                    <video id="live-video" autoplay playsinline></video>
+                    <canvas id="live-overlay"></canvas>
+                </div>
+
+                <div class="camera-controls mt-3">
+                    <button type="button" class="btn btn-accent btn-lg" id="btn-start-live"
+                            onclick="startLiveDetection();"
+                            {{ 'disabled' if not model_available }}>
+                        <i class="bi bi-play-fill me-1"></i>Start Detection
+                    </button>
+                    <button type="button" class="btn btn-danger btn-lg" id="btn-stop-live"
+                            onclick="stopLiveDetection();" style="display: none;">
+                        <i class="bi bi-stop-fill me-1"></i>Stop Detection
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Status Panel -->
+    <div class="col-lg-5">
+        <!-- Current Emotion -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-emoji-smile me-2"></i>Current Emotion
+            </div>
+            <div class="card-body">
+                <div class="live-status">
+                    <div class="live-emotion" id="live-emotion">—</div>
+                    <div class="live-confidence" id="live-confidence">—</div>
+                    <div class="live-timer mt-2">
+                        <i class="bi bi-clock me-1"></i>
+                        Session: <span id="session-timer">00:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emotion Distribution -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-bar-chart me-2"></i>Session Emotion Distribution
+            </div>
+            <div class="card-body" id="emotion-distribution">
+                <div class="empty-state py-3">
+                    <p class="text-muted mb-0">Start detection to see distribution</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Summary (shown after stop) -->
+        <div class="card" id="session-summary-card" style="display: none;">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-check-circle me-2"></i>Session Summary
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <small class="text-muted d-block">Duration</small>
+                        <strong id="summary-duration">—</strong>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <small class="text-muted d-block">Total Detections</small>
+                        <strong id="summary-detections">—</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Dominant Emotion</small>
+                        <strong id="summary-emotion">—</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Avg Confidence</small>
+                        <strong id="summary-confidence">—</strong>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('dashboard.profile') }}" class="btn btn-outline-accent btn-sm">
+                        <i class="bi bi-clock-history me-1"></i>View History
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/live_detection.js') }}"></script>
+{% endblock %}

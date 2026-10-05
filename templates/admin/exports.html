@@ -1,0 +1,121 @@
+﻿{% extends "base.html" %}
+{% import "admin/_macros.html" as ui %}
+
+{% block title %}Admin Exports{% endblock %}
+
+{% block extra_styles %}
+<link href="{{ url_for('static', filename='css/admin.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h3 class="mb-0"><i class="bi bi-file-earmark-excel me-2"></i>Admin Exports</h3>
+            <small class="text-muted">
+                Build an Excel workbook from live database queries. Nothing is cached on disk
+                and no stored image is included.
+            </small>
+        </div>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Dashboard
+        </a>
+    </div>
+
+    <div class="admin-shell">
+        {{ ui.admin_sidebar('exports') }}
+
+        <div class="admin-content">
+
+            <!-- ==== Row counts from the database ==== -->
+            <div class="row">
+                {{ ui.stat_card('Users', counts['users'], 'bi-people', 'primary') }}
+                {{ ui.stat_card('Detections', counts['detections'], 'bi-images', 'info') }}
+                {{ ui.stat_card('Live Sessions', counts['sessions'], 'bi-camera-video', 'warning') }}
+                {{ ui.stat_card('Activity Events', counts['activities'], 'bi-clock-history', 'success') }}
+            </div>
+
+            <!-- ==== Export builder ==== -->
+            <div class="card mb-3">
+                <div class="card-header py-2">
+                    <h6 class="mb-0"><i class="bi bi-download me-2"></i>Build export workbook</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">
+                        The workbook contains four sheets:
+                        <strong>Users</strong>,
+                        <strong>Detections</strong>,
+                        <strong>Live Sessions</strong> and
+                        <strong>Activity Log</strong>.
+                        Password hashes, storage credentials and live-session tokens are
+                        <em>never</em> written to the export.
+                    </p>
+
+                    <div class="alert alert-warning small d-flex align-items-start gap-2" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <div>
+                            Each sheet is capped at <strong>{{ row_limit }}</strong> rows so a very
+                            large production database cannot exhaust serverless memory. When a
+                            cap is reached it is recorded in the activity log entry for this export.
+                        </div>
+                    </div>
+
+                    <form method="post" action="{{ url_for('admin.exports') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-file-earmark-excel me-1"></i>
+                            Download Excel workbook
+                        </button>
+                        <span class="text-muted small ms-2">
+                            Generating the workbook may take a moment on a large dataset.
+                        </span>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ==== Recent export history ==== -->
+            <div class="card mb-3">
+                <div class="card-header py-2">
+                    <h6 class="mb-0"><i class="bi bi-history me-2"></i>Recent exports</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm admin-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>When (UTC)</th>
+                                    <th>Exported by</th>
+                                    <th>Summary</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for row in recent_exports %}
+                                <tr>
+                                    <td class="text-nowrap">
+                                        {{ row.created_at.strftime('%Y-%m-%d %H:%M:%S') if row.created_at }}
+                                    </td>
+                                    <td>{{ row.user.username if row.user else '—' }}</td>
+                                    <td><small class="text-muted">{{ row.details or '—' }}</small></td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">
+                                        No admin export has been generated yet.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-light border small">
+                <i class="bi bi-shield-lock me-1"></i>
+                Exports contain personal data. Handle the downloaded file according to your
+                organisation's data protection policy and delete it when it is no longer needed.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

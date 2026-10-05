@@ -123,6 +123,7 @@
         <div class="d-flex flex-wrap gap-2">
             {% if not result.get('saved') %}
             <form method="POST" action="{{ url_for('detection.save_result') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-accent">
                     <i class="bi bi-save me-1"></i>Save Result
                 </button>

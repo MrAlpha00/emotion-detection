@@ -13,6 +13,9 @@
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 
+    <!-- CSRF token for JavaScript POST requests (fetch calls read this) -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
     {% block extra_styles %}{% endblock %}
 </head>
 <body>
@@ -28,14 +31,30 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 {% if current_user.is_authenticated %}
                 <ul class="navbar-nav me-auto">
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-shield-lock me-1"></i>Admin
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.users') }}"><i class="bi bi-people me-2"></i>Users</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.analytics') }}"><i class="bi bi-graph-up me-2"></i>Analytics</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.activity') }}"><i class="bi bi-clock-history me-2"></i>Activity</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.detections') }}"><i class="bi bi-images me-2"></i>Detections</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.sessions') }}"><i class="bi bi-camera-video me-2"></i>Live Sessions</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.exports') }}"><i class="bi bi-file-earmark-excel me-2"></i>Exports</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('dashboard.home') }}">
-                            <i class="bi bi-house-door me-1"></i>Dashboard
+                            <i class="bi bi-house-door me-1"></i>Home
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('detection.detect_page') }}">
-                            <i class="bi bi-camera me-1"></i>Detect Emotion
+                            <i class="bi bi-camera me-1"></i>Detection
                         </a>
                     </li>
                     <li class="nav-item">
@@ -45,12 +64,12 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('dashboard.profile') }}">
-                            <i class="bi bi-person me-1"></i>Profile
+                            <i class="bi bi-person me-1"></i>History
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('dashboard.conclusion') }}">
-                            <i class="bi bi-book me-1"></i>About
+                            <i class="bi bi-book me-1"></i>Conclusion
                         </a>
                     </li>
                 </ul>
@@ -109,15 +128,32 @@
 
     <!-- Main Content -->
     <main class="container py-4">
+        <!-- Global model availability banner -->
+        {% if not model_available and current_user.is_authenticated %}
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <div>
+                <strong>Emotion model unavailable.</strong>
+                Detection is disabled until a valid model is installed.
+                <span class="d-block small text-muted">{{ model_status_message }}</span>
+            </div>
+        </div>
+        {% endif %}
+
         {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
     <footer class="footer">
         <div class="container text-center">
-            <p class="mb-0">
+            <p class="mb-1">
                 <i class="bi bi-mortarboard me-1"></i>
                 Emotion Detection Using Facial Expression — Academic Project
+            </p>
+            <p class="mb-0 small text-muted">
+                Results are <em>estimated facial expressions</em> produced by a machine-learning
+                classifier. They are not a medical or psychological assessment and do not
+                determine a person's true internal emotional state.
             </p>
         </div>
     </footer>

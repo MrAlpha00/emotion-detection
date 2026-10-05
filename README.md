@@ -1,281 +1,505 @@
 # Emotion Detection Using Facial Expression
 
-A web application that detects human emotions from facial expressions using computer vision and deep learning. Built as an academic project with Python, Flask, OpenCV, and TensorFlow/Keras.
+A Flask web application that classifies facial expressions into seven emotions
+using OpenCV face detection and a Keras CNN. It runs on a local SQLite file for
+development and on PostgreSQL with private Supabase Storage for production,
+without changing the application code.
 
 ---
 
-## 📋 Features
+## Features
 
-- **User Authentication** — Register, login, logout with secure password hashing
-- **Image Emotion Detection** — Upload an image or capture from camera
-- **Live Camera Detection** — Real-time emotion detection via webcam
-- **Face Detection** — OpenCV Haar Cascade for reliable face detection
-- **Emotion Classification** — CNN model classifies 7 emotions (Angry, Disgust, Fear, Happy, Sad, Surprise, Neutral)
-- **Result History** — View and manage past detection results
-- **Live Session Tracking** — Session summaries with dominant emotion and statistics
-- **Excel Export** — Download detection history as a formatted `.xlsx` report
-- **User Isolation** — Each user can only access their own data
-
----
-
-## 🏗 Architecture
-
-```
-Browser → Flask Routes → Application Services → SQLAlchemy → SQLite Database
-                              ├── Authentication
-                              ├── Face Detection (OpenCV)
-                              ├── Emotion Prediction (Keras CNN)
-                              ├── Result Management
-                              ├── Live Detection
-                              └── Excel Export (openpyxl)
-```
-
-**ML Pipeline:**
-```
-Input Image/Camera → Face Detection → Face Crop → Preprocessing → Emotion Model → Emotion + Confidence → Save → Display
-```
+- **Accounts** — register, log in, log out; PBKDF2-SHA256 password hashing
+- **Image detection** — upload a photo or capture one from the webcam
+- **Live detection** — streaming webcam analysis with per-session summaries
+- **Face detection** — OpenCV Haar cascade; a frame with no face is reported as
+  such rather than guessed at
+- **Seven-emotion classification** — Angry, Disgust, Fear, Happy, Sad, Surprise, Neutral
+- **History** — browse, preview and delete your own past detections
+- **Live session history** — duration, dominant emotion, average confidence
+- **Excel export** — formatted `.xlsx` of your own history, or an admin workbook
+- **Admin area** — user management, activity audit log, analytics, exports
+- **Strict user isolation** — every query is scoped to the authenticated owner
 
 ---
 
-## 🛠 Technology Stack
+## Architecture
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Backend | Python 3, Flask | Web framework |
-| Database | SQLite, SQLAlchemy | Data persistence |
-| Authentication | Flask-Login, Werkzeug | Session management, password hashing |
-| Face Detection | OpenCV | Haar Cascade face detection |
-| Emotion Model | TensorFlow/Keras | CNN emotion classification |
-| Frontend | HTML5, CSS3, JavaScript, Bootstrap 5 | User interface |
-| Export | openpyxl | Excel report generation |
+The same code serves both environments. Only configuration differs.
+
+```
+                    ┌──────────────────────────────────────────┐
+Browser ──HTTPS──▶  │ Flask app factory (app.py)               │
+                    │  CSRF · auth · security headers · limits │
+                    └───────────────┬──────────────────────────┘
+                                    │
+             ┌──────────────────────┼──────────────────────┐
+             ▼                      ▼                      ▼
+      Face detection        Emotion model           Storage abstraction
+      (OpenCV Haar)         (Keras CNN)             ┌──────────┬──────────┐
+                                                   │  local   │ Supabase │
+                                                   │ instance/│ private  │
+                                                   │ uploads  │  bucket  │
+                                                   └──────────┴──────────┘
+                                    │
+                          ┌─────────┴─────────┐
+                          ▼                   ▼
+                   SQLite (dev)        PostgreSQL (prod)
+```
+
+Everything is chosen by environment variables:
+
+| Variable        | Development                | Production                          |
+| --------------- | -------------------------- | ----------------------------------- |
+| `DATABASE_URL`  | empty → SQLite            | PostgreSQL URI → `psycopg`           |
+| `STORAGE_BACKEND` | `local`                 | `supabase` → private bucket          |
+
+The app never silently downgrades to SQLite in production. If `DATABASE_URL` is
+missing when `FLASK_ENV=production`, it refuses to start.
+
+### ML pipeline
+
+```
+image / video frame
+      │
+      ├─▶ validate (extension, MIME, magic bytes, decode, size)
+      │
+      ├─▶ OpenCV Haar cascade → no face? report it, do not predict
+      │
+      ├─▶ crop, grayscale, resize to 48×48, normalise
+      │
+      ├─▶ Keras CNN → softmax over 7 classes
+      │
+      └─▶ emotion + confidence → persist → authorised preview
+```
+
+If the model cannot be loaded, every prediction route returns *Emotion model
+unavailable*. The application never substitutes a random or hard-coded result.
 
 ---
 
-## 📁 Folder Structure
+## Technology stack
 
-```
-emotion_detection_project/
-├── app.py                    # Main Flask application
-├── config.py                 # Centralized configuration
-├── requirements.txt          # Python dependencies
-├── README.md                 # This file
-│
-├── model/                    # ML model directory
-│   └── emotion_model.h5      # ⬅ Place your model here
-│
-├── database/                 # SQLite database (auto-created)
-│   └── emotion_app.db
-│
-├── models/                   # SQLAlchemy ORM models
-│   ├── user.py               # User model
-│   ├── detection.py          # Detection model
-│   └── live_session.py       # LiveSession model
-│
-├── routes/                   # Flask Blueprints
-│   ├── auth.py               # Login/Register/Logout
-│   ├── dashboard.py          # Home, Profile, Conclusion
-│   ├── detection.py          # Image/Camera/Live detection
-│   └── export.py             # Excel export
-│
-├── utils/                    # Utility modules
-│   ├── database.py           # Database initialization
-│   ├── face_detector.py      # OpenCV face detection
-│   ├── emotion_predictor.py  # Keras model loading + prediction
-│   └── excel_exporter.py     # Excel report generator
-│
-├── templates/                # Jinja2 HTML templates
-│   ├── base.html             # Base layout
-│   ├── login.html            # Login page
-│   ├── register.html         # Registration page
-│   ├── home.html             # Dashboard
-│   ├── user_module.html      # Profile + History
-│   ├── face_detection.html   # Upload/Capture detection
-│   ├── result.html           # Detection result
-│   ├── live_detection.html   # Live webcam detection
-│   ├── conclusion.html       # Academic conclusion
-│   └── error.html            # Error pages
-│
-└── static/
-    ├── css/style.css         # Custom styles
-    ├── js/
-    │   ├── main.js           # Common utilities
-    │   ├── camera.js         # Camera capture
-    │   └── live_detection.js # Live detection
-    ├── uploads/              # Uploaded images (auto-created)
-    └── results/              # Processed images (auto-created)
-```
+| Layer         | Choice                                              |
+| ------------- | --------------------------------------------------- |
+| Web           | Flask 3, Werkzeug, Jinja2                            |
+| ORM           | SQLAlchemy 2 via Flask-SQLAlchemy                    |
+| Migrations    | Alembic via Flask-Migrate                            |
+| Auth          | Flask-Login, Flask-WTF (CSRF), Werkzeug security    |
+| Databases     | SQLite (dev), PostgreSQL 3 / psycopg (prod)          |
+| Storage       | local filesystem, Supabase Storage (private bucket) |
+| Vision        | OpenCV                                              |
+| Model         | TensorFlow / Keras                                  |
+| Exports       | openpyxl                                            |
+| Config        | python-dotenv                                       |
 
 ---
 
-## 🚀 Installation & Setup
+## Quick start (local, SQLite)
 
-### Prerequisites
-
-- **Python 3.10 or 3.11** (required for TensorFlow compatibility)
-- **pip** (Python package manager)
-- **Webcam** (optional, for camera and live detection features)
-
-### Step 1: Clone or Download the Project
-
-Place the project files in your desired directory.
-
-### Step 2: Create a Virtual Environment
+Requires Python 3.10+.
 
 ```bash
+# 1. Create and activate a virtual environment
 python -m venv venv
-```
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # macOS / Linux
 
-### Step 3: Activate the Virtual Environment
-
-**Windows:**
-```bash
-venv\Scripts\activate
-```
-
-**macOS/Linux:**
-```bash
-source venv/bin/activate
-```
-
-### Step 4: Install Dependencies
-
-```bash
-pip install --upgrade pip
+# 2. Install dependencies
 pip install -r requirements.txt
-```
 
-> **Note:** TensorFlow is a large package (~500 MB+). Installation may take several minutes.
+# 3. Create your configuration
+copy .env.example .env         # Windows
+# cp .env.example .env         # macOS / Linux
 
-### Step 5: Place the Emotion Model
+# 4. Create the schema
+flask --app "app:create_app" db upgrade
 
-The application requires a pre-trained Keras model file. **No fallback or demo mode exists** — the model is mandatory for emotion detection features.
+# 5. Create the first admin (interactive, password is not echoed)
+python scripts/create_admin.py
 
-**Download a FER-2013 model from one of these sources:**
-
-**Option A — Hugging Face:**
-```python
-# Run this in a Python script or terminal
-from huggingface_hub import hf_hub_download
-model_path = hf_hub_download(repo_id="shivamprasad1001/Emo0.1", filename="Emo0.1.h5")
-print(f"Model downloaded to: {model_path}")
-# Copy the downloaded file to: model/emotion_model.h5
-```
-
-**Option B — GitHub:**
-1. Visit: https://github.com/GSNCodes/Emotion-Detection-FER2013
-2. Download the pre-trained `.h5` model file
-3. Place it at: `model/emotion_model.h5`
-
-**Model Requirements:**
-- Format: `.h5` or `.keras`
-- Input shape: `(48, 48, 1)` — 48×48 grayscale
-- Output: 7 classes in order: `[Angry, Disgust, Fear, Happy, Sad, Surprise, Neutral]`
-- If your model uses a different configuration, update `config.py`
-
-### Step 6: Run the Application
-
-```bash
+# 6. Run
 python app.py
 ```
 
-The application will start at: **http://127.0.0.1:5000**
+Open <http://127.0.0.1:5000>, register a normal account through the web form, and
+log in.
+
+With `DATABASE_URL` empty, `AUTO_CREATE_TABLES` defaults to on, so step 4 is
+optional for a brand-new local database. It is **not** optional for an existing
+one: `create_all()` never adds columns to a table that already exists, which is
+exactly what `db upgrade` is for.
+
+### Running the tests
+
+```bash
+python scripts/selftest.py
+```
+
+The suite builds a throwaway SQLite database, exercises authentication,
+authorisation, CSRF, uploads, live sessions, ownership, exports and admin pages,
+then deletes it. It never touches `database/emotion_app.db`.
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
-All settings are centralized in `config.py`:
+Every setting is an environment variable. `.env` is read at startup, but real
+environment variables take precedence, which is what you want on a hosting
+platform. See `.env.example` for the annotated list; the ones that matter most:
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `MODEL_PATH` | `model/emotion_model.h5` | Path to the Keras model |
-| `MODEL_INPUT_SIZE` | `(48, 48)` | Expected input dimensions |
-| `MODEL_COLOR_MODE` | `grayscale` | Input color mode |
-| `EMOTION_LABELS` | 7 FER-2013 classes | Emotion class labels and order |
-| `LIVE_DETECTION_INTERVAL` | `2` seconds | Frame processing interval |
-| `MAX_CONTENT_LENGTH` | `16 MB` | Maximum upload file size |
+| Variable | Purpose |
+| --- | --- |
+| `SECRET_KEY` | Signs session cookies. **Required** in production; the app refuses to start on the development fallback. |
+| `DATABASE_URL` | PostgreSQL URI. Empty means local SQLite. |
+| `SUPABASE_URL` | Project REST endpoint. |
+| `SUPABASE_SECRET_KEY` | Server-side key for Storage (`sb_secret_...` or legacy `service_role`). |
+| `STORAGE_BACKEND` | `local` or `supabase`. |
+| `STORAGE_BUCKET` | Bucket name; must be private. |
+| `UPLOAD_LIMIT` | Max upload size in **bytes** (default 16 MiB). |
+| `LIVE_DETECTION_INTERVAL` | Seconds between accepted frames per user. |
+| `EMOTION_LABELS_JSON` | Class order, if your model differs from the default. |
 
----
+Generate a secret key with:
 
-## 📸 Camera Permissions
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
-- The browser will request camera access when you use "Capture from Camera" or "Live Detection"
-- Click **Allow** when prompted
-- For HTTPS requirements: `localhost` / `127.0.0.1` is automatically allowed
-- If denied, check your browser's site settings to re-enable camera access
+### A note on `DATABASE_URL` passwords
 
----
+Percent-encode reserved characters in the password. The most common failure is an
+unescaped `@`:
 
-## 📊 Excel Export
+```
+postgresql://postgres.PROJECT:P@ssw0rd@aws-0-region.pooler.supabase.com:5432/postgres
+```
 
-- Go to **Profile** → **Export Results** or **Dashboard** → **Export Excel**
-- Downloads an `.xlsx` file with two worksheets:
-  1. **Detection History** — All saved image/camera detections
-  2. **Live Sessions** — All live detection session summaries
-- Only your data is exported (user isolation enforced)
-- Professional formatting: bold headers, filters, frozen panes, borders
+SQLAlchemy splits on the **last** `@`, so the real host ends up inside the
+password field and you get a confusing DNS error. Encode it as `%40`:
 
----
+```
+postgresql://postgres.PROJECT:P%40ssw0rd@aws-0-region.pooler.supabase.com:5432/postgres
+```
 
-## 🗃 Database
-
-- **Engine:** SQLite (file-based, no setup required)
-- **ORM:** SQLAlchemy
-- **Location:** `database/emotion_app.db` (auto-created on first run)
-- **Tables:** `users`, `detections`, `live_sessions`
-
-To reset the database, simply delete `database/emotion_app.db` and restart the app.
-
----
-
-## ❓ Troubleshooting
-
-### "Emotion model unavailable"
-- Ensure the model file exists at `model/emotion_model.h5`
-- Check the console output for specific validation errors
-- Verify the model's input/output shapes match `config.py`
-
-### TensorFlow installation fails
-- Ensure Python 3.10 or 3.11 (not 3.12+)
-- Try: `pip install tensorflow --no-cache-dir`
-- On Windows, ensure Visual C++ Redistributable is installed
-
-### Camera not working
-- Allow camera access in browser settings
-- Try Chrome or Edge (best WebRTC support)
-- Check if another application is using the camera
-
-### "No face detected"
-- Ensure the face is clearly visible and well-lit
-- Try a frontal face photo (Haar Cascade works best with frontal faces)
-- Avoid extreme angles or heavy occlusion
+The app detects the unescaped-`@` case and prints a warning without echoing the
+value.
 
 ---
 
-## 🎓 Academic Project Explanation
+## Database migrations
 
-This project demonstrates the practical application of:
+Schema changes go through Alembic. Migrations live in `migrations/` and are
+tracked in version control.
 
-1. **Computer Vision** — Using OpenCV Haar Cascades for real-time face detection
-2. **Deep Learning** — Convolutional Neural Network for emotion classification
-3. **Web Development** — Full-stack Flask application with authentication
-4. **Database Management** — SQLite with SQLAlchemy ORM
-5. **Data Export** — Generating formatted Excel reports with openpyxl
+```bash
+# Apply everything
+flask --app "app:create_app" db upgrade
 
-**Key concepts for viva:**
-- Haar Cascade: A machine learning-based approach for object detection using edge and rectangle features
-- CNN: Learns hierarchical features from images (edges → textures → facial patterns → emotions)
-- FER-2013: A benchmark dataset of 35,000+ labeled facial expression images
-- The system classifies *visible facial expressions*, not true internal emotions
+# After changing a model
+flask --app "app:create_app" db migrate -m "describe the change"
+
+# Confirm the database matches the models (should print nothing)
+flask --app "app:create_app" db check
+
+# Undo the last migration
+flask --app "app:create_app" db downgrade -1
+```
+
+The first revision works from either starting point:
+
+- **Empty database** — creates all four tables with foreign keys, `ON DELETE
+  CASCADE`, uniqueness and indexes.
+- **Pre-Alembic SQLite file** — adds the columns introduced since (`users.role`,
+  `users.is_active`, `users.login_count`, `users.last_login_at`,
+  `detections.processed_image_path`, `live_sessions.session_token`), creates the
+  missing indexes and brings the existing constraints in line with the models.
+  Existing rows are preserved; a pre-existing user picks up the real defaults
+  (`role='user'`, `is_active=1`, `login_count=0`) rather than nulls.
+
+Always back up before migrating:
+
+```bash
+copy database\emotion_app.db database\emotion_app.db.bak   # Windows
+cp database/emotion_app.db database/emotion_app.db.bak     # macOS / Linux
+```
 
 ---
 
-## ⚠ Disclaimer
+## Supabase setup
 
-This is an academic demonstration of facial expression classification. Detected "emotions" are statistical predictions based on visible facial patterns and may not accurately reflect a person's true internal emotional state.
+### 1. Database
+
+Create a Supabase project, then copy the **session mode** connection string from
+**Project Settings → Database → Connection string → URI**. Put it in
+`DATABASE_URL`, percent-encoding the password, then apply the schema:
+
+```bash
+flask --app "app:create_app" db upgrade
+```
+
+### 2. Private storage bucket
+
+In **Storage**, create a bucket and **turn public access off**.
+
+The application never serves bucket objects directly. Reads go through an
+authorised route that checks the requester owns the detection, then either
+redirects to a short-lived signed URL (`SIGNED_URL_TTL_SECONDS`, default 300s) or
+streams the bytes. A public bucket would make every stored image readable by
+anyone who guesses or leaks the key.
+
+### 3. Keys
+
+The server-side key needs `sb_secret_...` (new style) or the legacy
+`service_role` JWT. The publishable `sb_publishable_...` / `anon` key **cannot**
+manage a private bucket, so the app refuses to start if that is all it finds,
+rather than failing later on the first upload.
+
+Keep the secret key server-side only. It must never appear in client JavaScript,
+in a template, or in version control.
 
 ---
 
-## 📄 License
+## Moving local data to PostgreSQL
 
-Academic project — for educational purposes only.
+Optional. Once the target schema exists (`flask db upgrade` against PostgreSQL):
+
+```bash
+python scripts/migrate_sqlite_to_postgres.py --dry-run   # report only
+python scripts/migrate_sqlite_to_postgres.py             # copy
+```
+
+Properties worth knowing:
+
+- The SQLite file is opened **read-only**.
+- Rows are copied with explicit primary keys and `ON CONFLICT DO NOTHING`, so
+  re-running never duplicates a row and never overwrites what PostgreSQL
+  already holds.
+- There is no `TRUNCATE`, `DROP` or `DELETE` anywhere in the script.
+- Each table is one transaction, so a failure leaves whole tables rather than
+  halves.
+
+**Stored images are not transferred.** `image_path` and `processed_image_path`
+hold storage *keys*; the bytes live on local disk or in Supabase Storage. Copying
+rows without the files would leave dangling references, so move the files
+separately (or accept that pre-existing previews will 404 and re-upload).
+
+---
+
+## Admin accounts
+
+The `admin` role is deliberately unreachable from the registration form, so it
+can only be granted from the command line or by an existing admin.
+
+```bash
+python scripts/create_admin.py
+python scripts/create_admin.py --username admin --email you@example.com
+```
+
+Omit `--password` and the password is read with `getpass`, so it is not echoed
+and never lands in shell history. Validation is imported from `routes.auth`, so
+an admin account cannot be created under weaker rules than a normal sign-up.
+
+Exit codes: `0` success, `1` invalid input, `2` username or email already taken,
+`3` database error.
+
+---
+
+## Security model
+
+**Passwords** — PBKDF2-SHA256 through Werkzeug. Plain text is never stored or
+logged.
+
+**Sessions** — signed cookies, `HttpOnly`, `SameSite=Lax`, and `Secure`
+automatically when `VERCEL` is set.
+
+**CSRF** — Flask-WTF protects every state-changing form. JSON endpoints require
+the token in the `X-CSRFToken` header and return a JSON error rather than an
+HTML page, so the frontend can handle it. JavaScript reads the token from
+`<meta name="csrf-token">`.
+
+**Authorisation** — every detection, preview and export query is filtered by the
+authenticated user id. Admin routes require the admin role. `is_active` is
+checked on each request, so deactivating an account takes effect immediately
+rather than at the next login.
+
+**Live sessions** — a session is issued a 32-byte URL-safe random token, stored
+server-side, and compared in constant time. A missing, empty or mismatched token
+is refused; one user cannot use or end another user's session.
+
+**Uploads** — extension, declared MIME type, magic bytes and a real decode must
+all agree, plus a size cap returning HTTP 413. A file renamed to `.jpg` is
+rejected. Validation happens *before* the model is consulted, so a bad upload is
+refused even when the model is broken.
+
+**Rate limiting** — a server-side sliding window on live frame submission. A
+modified client cannot bypass it by changing the interval.
+
+**Image privacy** — stored images are reachable only through an ownership-checked
+route. There is no public directory serving user content.
+
+**Security headers** — every response carries `X-Content-Type-Options: nosniff`,
+`X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`
+and `Permissions-Policy: camera=(self), microphone=()`. Outside debug mode,
+`Strict-Transport-Security` is added as well. A Content-Security-Policy is *not*
+currently set; the templates use inline scripts and a Bootstrap CDN, so adding
+one properly needs per-request nonces. Treat that as outstanding work rather
+than assuming it is covered.
+
+**No privilege escalation** — `role`, `id` and `is_active` are never read from a
+submitted form. Registration always creates a `user`.
+
+---
+
+## Privacy
+
+- **Images** are private user content. Uploads and camera captures are stored to
+  give the user their own history, and are visible only to that user (and to an
+  admin acting in an administrative capacity).
+- **The audit log** (`user_activities`) records the client IP address and
+  User-Agent for abuse investigation and session tracing. Both are personal
+  data under GDPR. It never stores passwords, hashes, session cookies, CSRF
+  tokens or API keys.
+- **Exports** contain detection metadata and emotion results. Session tokens and
+  password hashes are explicitly excluded from every workbook.
+- **Deletion** — deleting an account removes its detections, live sessions and
+  activity rows. Deleting a detection, or clearing your history, deletes the
+  stored images as well as the database rows.
+- **Live frames** are analysed in memory and are not persisted as images; only
+  the aggregate session summary and individual detection records are stored.
+- **Retention** — there is currently no automatic pruning. Rows and stored
+  images accumulate until the user deletes them or the account is removed. If
+  you need a retention limit, add one before processing uploads to real users.
+
+---
+
+## Testing
+
+`python scripts/selftest.py` runs 27 checks against a temporary SQLite database
+and prints `PASS` / `FAIL` / `BLOCKED` per check with a summary.
+
+It covers: health endpoint, registration and login, login metrics and audit
+writes, CSRF on forms and JSON, role and deactivation enforcement, admin page
+rendering, cross-user access denial, upload rejection and size limits, live
+session token enforcement (with inference stubbed), model-unavailable handling,
+export contents, deletion confirmation and security headers.
+
+Anything the environment prevents is reported as `BLOCKED` rather than silently
+skipped or optimistically marked as passing.
+
+---
+
+## Deployment
+
+### Before you deploy
+
+- [ ] `SECRET_KEY` is a fresh random value, not the development fallback
+- [ ] `DATABASE_URL` points at PostgreSQL with a percent-encoded password
+- [ ] `flask db upgrade` has been applied to that database
+- [ ] The Storage bucket exists and is **private**
+- [ ] `SUPABASE_SECRET_KEY` is a server-side key, not the publishable key
+- [ ] The model file is present and the class order in `EMOTION_LABELS_JSON` is
+      correct for your model
+- [ ] `python scripts/selftest.py` passes
+
+### A real constraint on Vercel
+
+`tensorflow` is roughly 500–600 MB of native libraries. Vercel's serverless
+function size limit is much smaller, so **a Vercel deployment that imports
+TensorFlow inside the function bundle will not build**. This is a platform limit,
+not something this codebase can code around.
+
+Your options:
+
+1. **Deploy somewhere with a normal application image** — Render, Railway,
+   Fly.io, Cloud Run, or a VPS. No code changes. This is the recommended path.
+2. **Split inference out** — keep the web app on Vercel and run the model behind
+   a small HTTPS service; the web app calls it instead of loading Keras.
+3. **Deploy to Vercel without inference.** The app handles this honestly: routes
+   that need a prediction return *Emotion model unavailable*. Everything else
+   (accounts, history, admin, exports) works.
+
+Do not simply delete the `tensorflow` line to make a build pass. That yields an
+app which builds and then refuses every prediction, which is far more confusing
+than a build that fails loudly.
+
+`vercel.json` sets a 3008 MB memory limit and a 60 s function timeout; both are
+at or near the plan maximum and may still be insufficient for TensorFlow.
+
+---
+
+## Project layout
+
+```
+app.py                     application factory, CSRF, error handlers, WSGI app
+config.py                  all configuration and environment parsing
+models/
+  user.py                  accounts, roles, password hashing
+  detection.py             one row per detection; stores storage keys
+  live_session.py          live session summaries
+  user_activity.py         audit trail
+routes/
+  auth.py                  register, login, logout
+  dashboard.py             per-user dashboard and history
+  detection.py             upload, capture, live detection, authorised previews
+  export.py                per-user Excel export
+  admin.py                 admin area
+utils/
+  database.py              SQLAlchemy instance and backend selection
+  storage.py               local / Supabase Storage abstraction
+  security.py              access decorators, ownership checks, audit logging
+  rate_limit.py            sliding-window limiter
+  emotion_predictor.py     lazy model loading; fails loudly, never fakes
+  excel_exporter.py        workbook generation
+scripts/
+  create_admin.py          admin bootstrap CLI
+  migrate_sqlite_to_postgres.py   optional data copy
+  selftest.py              integration test suite
+migrations/                Alembic revisions (tracked in git)
+templates/                 Jinja templates
+static/                    CSS and JavaScript
+model/                     the Keras model
+database/                  local SQLite file (git-ignored)
+instance/uploads/          local storage (git-ignored)
+```
+
+---
+
+## Troubleshooting
+
+**`Emotion model unavailable`**
+The model could not be loaded. On Windows this is often an Application Control
+or antivirus policy blocking a native DLL that TensorFlow depends on. The app
+reports the underlying import error rather than guessing.
+
+**`failed to resolve host '...pooler.supabase.com'`**
+Almost always an unescaped `@` in the database password. See the note above.
+
+**`DATABASE_URL is not set`**
+`FLASK_ENV=production` was set without a database URL. Production never falls
+back to SQLite. Either provide `DATABASE_URL` or unset `FLASK_ENV` for local
+work.
+
+**`SUPABASE storage is not usable`**
+Only a publishable key was provided. A private bucket needs the server-side
+secret key.
+
+**A local detection image 404s after switching to Supabase storage**
+`image_path` holds a storage key, not a file. Rows written when
+`STORAGE_BACKEND=local` point at `./instance/uploads`, and a deployment on
+Supabase Storage will not have those bytes. Re-upload, or copy the files across.
+
+**`no such column: users.role`**
+The database predates the current models. Run `flask --app "app:create_app" db
+upgrade`.
+
+---
+
+## Licence and academic context
+
+Built as an academic project. The bundled Keras model is provided as-is; the
+emotion labels are not embedded in the file, so confirm the mapping in
+`EMOTION_LABELS_JSON` against your training code before relying on predictions.
+
+
+

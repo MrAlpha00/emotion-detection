@@ -1,0 +1,195 @@
+﻿{% extends "base.html" %}
+{% import "admin/_macros.html" as ui %}
+
+{% block title %}Manage Users{% endblock %}
+
+{% block extra_styles %}
+<link href="{{ url_for('static', filename='css/admin.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h3 class="mb-0"><i class="bi bi-people me-2"></i>User Management</h3>
+            <small class="text-muted">{{ users.total }} account(s) match the current filters.</small>
+        </div>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Dashboard
+        </a>
+    </div>
+
+    <div class="admin-shell">
+        {{ ui.admin_sidebar('users') }}
+
+        <div class="admin-content">
+
+            <!-- ==== Filters ==== -->
+            <form method="get" action="{{ url_for('admin.users') }}" class="admin-filters mb-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label" for="search">Search</label>
+                        <input type="search" class="form-control form-control-sm" id="search"
+                               name="search" value="{{ search }}"
+                               placeholder="Username or email">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="status">Status</label>
+                        <select class="form-select form-select-sm" id="status" name="status">
+                            <option value="">All</option>
+                            <option value="active" {{ 'selected' if status == 'active' }}>Active</option>
+                            <option value="inactive" {{ 'selected' if status == 'inactive' }}>Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="role">Role</label>
+                        <select class="form-select form-select-sm" id="role" name="role">
+                            <option value="">All</option>
+                            <option value="user" {{ 'selected' if role_filter == 'user' }}>User</option>
+                            <option value="admin" {{ 'selected' if role_filter == 'admin' }}>Admin</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="per_page">Per page</label>
+                        <select class="form-select form-select-sm" id="per_page" name="per_page">
+                            {% for size in [25, 50, 100] %}
+                            <option value="{{ size }}"
+                                {{ 'selected' if users.per_page == size }}>{{ size }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-primary flex-fill">
+                            <i class="bi bi-funnel me-1"></i>Filter
+                        </button>
+                        <a href="{{ url_for('admin.users') }}" class="btn btn-sm btn-outline-secondary">
+                            Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            <!-- ==== User table ==== -->
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover admin-table mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Joined (UTC)</th>
+                                    <th>Last Login (UTC)</th>
+                                    <th class="text-end">Logins</th>
+                                    <th class="text-end">Detections</th>
+                                    <th class="text-end">Sessions</th>
+                                    <th class="text-end">Live Time</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for user in users.items %}
+                                <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td>
+                                        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}"
+                                           class="fw-semibold">{{ user.username }}</a>
+                                        {% if user.id == current_user.id %}
+                                            <span class="badge bg-info ms-1">You</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><small>{{ user.email }}</small></td>
+                                    <td>{{ ui.role_badge(user.role) }}</td>
+                                    <td>{{ ui.status_badge(user.is_active) }}</td>
+                                    <td><small>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at }}</small></td>
+                                    <td>
+                                        <small>
+                                            {{ user.last_login_at.strftime('%Y-%m-%d %H:%M')
+                                               if user.last_login_at else '—' }}
+                                        </small>
+                                    </td>
+                                    <td class="text-end">{{ user.login_count or 0 }}</td>
+                                    <td class="text-end">{{ detection_counts.get(user.id, 0) }}</td>
+                                    <td class="text-end">{{ session_counts.get(user.id, 0) }}</td>
+                                    <td class="text-end">
+                                        {% set seconds = duration_totals.get(user.id, 0) %}
+                                        {{ (seconds / 60) | round(1) }} min
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}"
+                                           class="btn btn-sm btn-outline-primary" title="View user">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+
+                                        {% if user.id != current_user.id %}
+                                        <form method="post" class="d-inline"
+                                              action="{{ url_for('admin.toggle_user_active', user_id=user.id) }}"
+                                              onsubmit="return confirm('{{ 'Deactivate' if user.is_active else 'Reactivate' }} account {{ user.username }}?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit"
+                                                    class="btn btn-sm {{ 'btn-outline-warning' if user.is_active else 'btn-outline-success' }}"
+                                                    title="{{ 'Deactivate' if user.is_active else 'Reactivate' }}">
+                                                <i class="bi {{ 'bi-slash-circle' if user.is_active else 'bi-check-circle' }}"></i>
+                                            </button>
+                                        </form>
+
+                                        <!-- Deletion requires typing the username, which belongs on the detail page.
+     Posting from this list could never satisfy the confirm_username check, so
+     the button navigates there instead of silently failing. -->
+                                        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}"
+                                           class="btn btn-sm btn-outline-danger" title="Delete user">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-outline-secondary" disabled
+                                                title="You cannot modify your own account here">
+                                            <i class="bi bi-lock"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="12" class="text-center text-muted py-4">
+                                        No users match the current filters.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {{ ui.pagination(users, 'admin.users', {'search': search, 'status': status,
+                                                    'role': role_filter, 'per_page': users.per_page}) }}
+
+            <div class="alert alert-light border mt-3 small">
+                <i class="bi bi-info-circle me-1"></i>
+                Deleting a user also removes their detections, live sessions and activity
+                records through database cascades, so no orphaned rows are left behind.
+                The confirmation dialog requires the exact username.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // A second, deliberate confirmation for an irreversible action.
+    function confirmDelete(username) {
+        if (!window.confirm(
+            'Permanently delete "' + username + '"?\n\n' +
+            'All of their detections, live sessions and activity records will be removed.\n' +
+            'This cannot be undone.'
+        )) {
+            return false;
+        }
+        return window.confirm('Last check: really delete "' + username + '"?');
+    }
+</script>
+{% endblock %}

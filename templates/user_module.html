@@ -30,6 +30,7 @@
     </a>
     <form method="POST" action="{{ url_for('detection.clear_history') }}"
           onsubmit="return confirm('Are you sure you want to clear ALL your detection history? This action cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-outline-danger">
             <i class="bi bi-trash me-1"></i>Clear All History
         </button>
@@ -77,6 +78,7 @@
                                 </a>
                                 <form method="POST" action="{{ url_for('detection.delete_result', detection_id=d.id) }}"
                                       onsubmit="return confirm('Delete this detection result?');" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
                                         <i class="bi bi-trash"></i>
                                     </button>

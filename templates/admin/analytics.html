@@ -1,0 +1,383 @@
+﻿{% extends "base.html" %}
+{% import "admin/_macros.html" as ui %}
+
+{% block title %}Detection Analytics{% endblock %}
+
+{% block extra_styles %}
+<link href="{{ url_for('static', filename='css/admin.css') }}" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h3 class="mb-0"><i class="bi bi-graph-up me-2"></i>Detection Analytics</h3>
+            <small class="text-muted">
+                Every value below is aggregated from the database. No sample or placeholder data is used.
+            </small>
+        </div>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Dashboard
+        </a>
+    </div>
+
+    <!-- ==== Scope / range controls ==== -->
+    <form method="get" action="{{ url_for('admin.analytics') }}" class="admin-filters mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label" for="scope">Detection source</label>
+                <select class="form-select form-select-sm" id="scope" name="scope">
+                    <option value="all" {{ 'selected' if scope == 'all' }}>All detections</option>
+                    <option value="image" {{ 'selected' if scope == 'image' }}>Image only</option>
+                    <option value="live" {{ 'selected' if scope == 'live' }}>Live only</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="days">Reporting window</label>
+                <select class="form-select form-select-sm" id="days" name="days">
+                    {% for option in [7, 14, 30, 90, 180, 365] %}
+                    <option value="{{ option }}" {{ 'selected' if days == option }}>
+                        Last {{ option }} day(s)
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary flex-fill">
+                    <i class="bi bi-arrow-repeat me-1"></i>Apply
+                </button>
+                <a href="{{ url_for('admin.analytics') }}" class="btn btn-sm btn-outline-secondary">
+                    Reset
+                </a>
+            </div>
+        </div>
+    </form>
+
+    <div class="admin-shell">
+        {{ ui.admin_sidebar('analytics') }}
+
+        <div class="admin-content">
+
+            <!-- ==== Headline numbers ==== -->
+            <div class="row">
+                {{ ui.stat_card('Total Detections', total_detections, 'bi-images', 'primary',
+                                sub=window_detections ~ ' in window') }}
+                {{ ui.stat_card('Image Detections', image_detections, 'bi-file-earmark-image', 'info',
+                                sub=(image_detections / total_detections * 100 | round(1)) ~ '% of total'
+                                     if total_detections else '0% of total') }}
+                {{ ui.stat_card('Live Detections', live_detections, 'bi-camera-video', 'dark',
+                                sub=(live_detections / total_detections * 100 | round(1)) ~ '% of total'
+                                     if total_detections else '0% of total') }}
+            </div>
+
+            <div class="row">
+                {{ ui.stat_card('Live Sessions', total_live_sessions, 'bi-collection-play', 'warning') }}
+                {{ ui.stat_card('Live Duration', total_live_minutes ~ ' min', 'bi-stopwatch', 'success',
+                                sub=total_live_duration ~ ' second(s)') }}
+                {{ ui.stat_card('Avg Confidence', average_confidence ~ '%', 'bi-bullseye', 'info') }}
+                {{ ui.stat_card('Most Common', most_common_emotion or '—', 'bi-trophy', 'primary',
+                                sub=most_common_count ~ ' detection(s)') }}
+            </div>
+
+            <!-- ==== Charts ==== -->
+            <div class="row mt-1">
+                <div class="col-lg-7 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0">
+                                <i class="bi bi-graph-up me-2"></i>Detections per day
+                                <small class="text-muted">(last {{ days }} day(s))</small>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="admin-chart-box tall"><canvas id="detectionsByDay"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Emotion distribution</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="admin-chart-box tall"><canvas id="emotionDistribution"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-6 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0"><i class="bi bi-camera-video me-2"></i>Live sessions per day</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="admin-chart-box"><canvas id="sessionsByDay"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Image vs live detections</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="admin-chart-box"><canvas id="typeSplit"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==== Tabular analytics ==== -->
+            <div class="row">
+                <div class="col-lg-6 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0"><i class="bi bi-trophy me-2"></i>Top users by detections</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-sm admin-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Username</th>
+                                            <th class="text-end">Detections</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for row in top_users %}
+                                        <tr>
+                                            <td>{{ loop.index }}</td>
+                                            <td>{{ row.username }}</td>
+                                            <td class="text-end">{{ row.count }}</td>
+                                        </tr>
+                                    {% else %}
+                                        <tr><td colspan="3" class="text-center text-muted py-4">
+                                            No detection data available.
+                                        </td></tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0">
+                                <i class="bi bi-emoji-smile me-2"></i>Dominant emotion per live session
+                            </h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-sm admin-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Emotion</th>
+                                            <th class="text-end">Sessions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for emotion, count in dominant_emotions %}
+                                        <tr>
+                                            <td>{{ emotion }}</td>
+                                            <td class="text-end">{{ count }}</td>
+                                        </tr>
+                                    {% else %}
+                                        <tr><td colspan="2" class="text-center text-muted py-4">
+                                            No completed live sessions yet.
+                                        </td></tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==== Recent detection activity ==== -->
+            <div class="card mb-3">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-clock me-2"></i>Recent detection activity</h6>
+                    <a href="{{ url_for('admin.detections') }}" class="btn btn-sm btn-outline-secondary">
+                        Browse all detections
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm admin-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>When (UTC)</th>
+                                    <th>User</th>
+                                    <th>Type</th>
+                                    <th>Emotion</th>
+                                    <th class="text-end">Confidence</th>
+                                    <th class="text-end">Faces</th>
+                                    <th class="text-end">Processing (s)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for row in recent_detections %}
+                                <tr>
+                                    <td>{{ row.detected_at.strftime('%Y-%m-%d %H:%M:%S') if row.detected_at }}</td>
+                                    <td>
+                                        <a href="{{ url_for('admin.user_detail', user_id=row.user_id) }}">
+                                            {{ row.username }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'info' if row.detection_type == 'camera' else 'secondary' }}">
+                                            {{ row.detection_type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ row.emotion }}</td>
+                                    <td class="text-end">{{ '%.2f'|format(row.confidence or 0) }}%</td>
+                                    <td class="text-end">{{ row.face_count or 0 }}</td>
+                                    <td class="text-end">
+                                        {{ '%.3f'|format(row.processing_time) if row.processing_time else '—' }}
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="7" class="text-center text-muted py-4">
+                                    No detections recorded yet.
+                                </td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-light border small">
+                <i class="bi bi-info-circle me-1"></i>
+                Emotion labels are the classifier's <em>estimated facial expression</em> categories.
+                They are not a clinical assessment and do not represent a person's true
+                internal emotional state.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    'use strict';
+    if (typeof Chart === 'undefined') { return; }
+
+    const days = {{ detections_by_day | map(attribute='date') | list | tojson }};
+    const detectionCounts = {{ detections_by_day | map(attribute='count') | list | tojson }};
+    const sessionCounts = {{ sessions_by_day | map(attribute='count') | list | tojson }};
+    const emotionLabels = {{ emotion_counts | map(attribute='emotion') | list | tojson }};
+    const emotionData = {{ emotion_counts | map(attribute='count') | list | tojson }};
+
+    const palette = [
+        '#dc3545', '#fd7e14', '#6f42c1', '#198754',
+        '#0d6efd', '#20c997', '#6c757d'
+    ];
+
+    function grid() {
+        return { y: { beginAtZero: true, ticks: { precision: 0 } } };
+    }
+
+    // 1. Detections per day
+    const d1 = document.getElementById('detectionsByDay');
+    if (d1) {
+        new Chart(d1, {
+            type: 'line',
+            data: {
+                labels: days,
+                datasets: [{
+                    label: 'Detections',
+                    data: detectionCounts,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13,110,253,0.15)',
+                    fill: true, tension: 0.3, pointRadius: 2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: grid() }
+        });
+    }
+
+    // 2. Emotion distribution
+    const d2 = document.getElementById('emotionDistribution');
+    if (d2) {
+        new Chart(d2, {
+            type: 'doughnut',
+            data: {
+                labels: emotionLabels,
+                datasets: [{ data: emotionData, backgroundColor: palette }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = total ? ((ctx.parsed / total) * 100).toFixed(1) : '0.0';
+                                return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 3. Live sessions per day
+    const d3 = document.getElementById('sessionsByDay');
+    if (d3) {
+        new Chart(d3, {
+            type: 'bar',
+            data: {
+                labels: days,
+                datasets: [{
+                    label: 'Live sessions',
+                    data: sessionCounts,
+                    backgroundColor: 'rgba(255,193,7,0.75)',
+                    borderColor: '#ffc107',
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: grid() }
+        });
+    }
+
+    // 4. Image vs live split
+    const d4 = document.getElementById('typeSplit');
+    if (d4) {
+        new Chart(d4, {
+            type: 'bar',
+            data: {
+                labels: ['Image detections', 'Live detections'],
+                datasets: [{
+                    label: 'Detections',
+                    data: [{{ image_detections }}, {{ live_detections }}],
+                    backgroundColor: ['rgba(13,110,253,0.75)', 'rgba(108,117,125,0.75)'],
+                    borderColor: ['#0d6efd', '#6c757d'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

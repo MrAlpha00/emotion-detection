@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% import "admin/_macros.html" as ui %}
+
+{% block title %}All Detections{% endblock %}
+
+{% block extra_styles %}
+<link href="{{ url_for('static', filename='css/admin.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h3 class="mb-0"><i class="bi bi-images me-2"></i>All Detections</h3>
+            <small class="text-muted">{{ detections.total }} detection(s) match the current filters.</small>
+        </div>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Dashboard
+        </a>
+    </div>
+
+    <div class="admin-shell">
+        {{ ui.admin_sidebar('detections') }}
+
+        <div class="admin-content">
+
+            <form method="get" action="{{ url_for('admin.detections') }}" class="admin-filters mb-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label" for="user_id">User</label>
+                        <select class="form-select form-select-sm" id="user_id" name="user_id">
+                            <option value="">All users</option>
+                            {% for u in users %}
+                            <option value="{{ u.id }}"
+                                {{ 'selected' if selected_user_id == u.id }}>{{ u.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="emotion">Emotion</label>
+                        <select class="form-select form-select-sm" id="emotion" name="emotion">
+                            <option value="">All</option>
+                            {% for e in emotions %}
+                            <option value="{{ e }}" {{ 'selected' if selected_emotion == e }}>{{ e }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="detection_type">Type</label>
+                        <select class="form-select form-select-sm" id="detection_type" name="detection_type">
+                            <option value="">All</option>
+                            <option value="image" {{ 'selected' if selected_detection_type == 'image' }}>Image</option>
+                            <option value="camera" {{ 'selected' if selected_detection_type == 'camera' }}>Live</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="date_from">From</label>
+                        <input type="date" class="form-control form-control-sm"
+                               id="date_from" name="date_from" value="{{ date_from }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="date_to">To</label>
+                        <input type="date" class="form-control form-control-sm"
+                               id="date_to" name="date_to" value="{{ date_to }}">
+                    </div>
+                    <div class="col-md-1 d-flex gap-1">
+                        <button type="submit" class="btn btn-sm btn-primary" title="Apply filters">
+                            <i class="bi bi-funnel"></i>
+                        </button>
+                        <a href="{{ url_for('admin.detections') }}" class="btn btn-sm btn-outline-secondary"
+                           title="Reset filters">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover admin-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>When (UTC)</th>
+                                    <th>User</th>
+                                    <th>Type</th>
+                                    <th>Emotion</th>
+                                    <th class="text-end">Confidence</th>
+                                    <th class="text-end">Faces</th>
+                                    <th class="text-end">Processing (s)</th>
+                                    <th>Image</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for row in detections.items %}
+                                <tr>
+                                    <td>{{ row.id }}</td>
+                                    <td class="text-nowrap">
+                                        {{ row.detected_at.strftime('%Y-%m-%d %H:%M:%S') if row.detected_at }}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin.user_detail', user_id=row.user_id) }}">
+                                            {{ row.user.username if row.user else '—' }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'info' if row.detection_type == 'camera' else 'secondary' }}">
+                                            {{ row.detection_type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ row.emotion }}</td>
+                                    <td class="text-end">{{ '%.2f'|format(row.confidence or 0) }}%</td>
+                                    <td class="text-end">{{ row.face_count or 0 }}</td>
+                                    <td class="text-end">
+                                        {{ '%.3f'|format(row.processing_time) if row.processing_time else '—' }}
+                                    </td>
+                                    <td>
+                                        {% if row.processed_image_path or row.image_path %}
+                                            <a href="{{ url_for('admin.detection_image', detection_id=row.id) }}"
+                                               target="_blank" rel="noopener">
+                                                <i class="bi bi-image"></i> View
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted small">None</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <a href="{{ url_for('admin.detection_detail', detection_id=row.id) }}"
+                                           class="btn btn-sm btn-outline-primary" title="Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <form method="post" class="d-inline"
+                                              action="{{ url_for('admin.delete_detection', detection_id=row.id) }}"
+                                              onsubmit="return confirm('Delete detection {{ row.id }}? This cannot be undone.');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="10" class="text-center text-muted py-4">
+                                        No detections match the current filters.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {{ ui.pagination(detections, 'admin.detections', {
+                'user_id': selected_user_id or '',
+                'emotion': selected_emotion,
+                'detection_type': selected_detection_type,
+                'date_from': date_from,
+                'date_to': date_to,
+                'per_page': detections.per_page
+            }) }}
+        </div>
+    </div>
+</div>
+{% endblock %}

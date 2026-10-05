@@ -1,12 +1,12 @@
 # =============================================================================
 # SQLAlchemy Models Package
 # =============================================================================
-# Import all models here so they can be accessed from models package directly.
-# Example: from models import User, Detection, LiveSession
+# Importing this package registers every model with SQLAlchemy's metadata.
 # =============================================================================
 
-from models.user import User
 from models.detection import Detection
 from models.live_session import LiveSession
+from models.user import User
+from models.user_activity import ActivityType, UserActivity
 
-__all__ = ['User', 'Detection', 'LiveSession']
+__all__ = ['ActivityType', 'Detection', 'LiveSession', 'User', 'UserActivity']

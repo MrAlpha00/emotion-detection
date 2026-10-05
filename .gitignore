@@ -1,1 +1,15 @@
-venv/ 
+﻿venv/
+static/uploads/
+static/results/
+database/
+.env
+__pycache__/
+*.pyc
+instance/
+.vscode/
+.idea/
+
+# Alembic migrations ARE tracked: without them a fresh PostgreSQL database cannot
+# be built. Only Python bytecode inside the folder is ignored.
+migrations/**/__pycache__/
+migrations/*.pyc

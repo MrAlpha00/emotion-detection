@@ -1,9 +1,53 @@
+# =============================================================================
+# Emotion Detection - Python dependencies
+# =============================================================================
+# Install with:
+#     pip install -r requirements.txt
+#
+# DEPLOYMENT WARNING - read before deploying to Vercel
+# -----------------------------------------------------------------------------
+# `tensorflow` pulls in roughly 500-600 MB of native libraries. Vercel's
+# serverless function size limit is far smaller than that, so a deployment that
+# imports TensorFlow inside the function bundle WILL fail to build or exceed the
+# size limit. This is a property of the platform, not a bug in this project.
+#
+# Practical options, in order of preference:
+#   1. Deploy to a host with a normal application image (Render, Railway, Fly.io,
+#      a VPS, Cloud Run). Nothing else changes.
+#   2. Keep the web app on Vercel and move inference to a small separate service
+#      that owns the model; the web app then calls it over HTTPS.
+#   3. Deploy to Vercel with inference disabled. The app already handles this
+#      honestly: routes that need a prediction return "Emotion model
+#      unavailable" instead of inventing a result. See README "Deployment".
+#
+# Do NOT simply drop the tensorflow line to make a build pass. That produces an
+# app that builds and then refuses every prediction, which is far more confusing
+# than a build that fails loudly.
+# =============================================================================
+
+# --- Web framework -----------------------------------------------------------
 Flask>=3.0
+Werkzeug>=3.0
 Flask-SQLAlchemy>=3.1
 Flask-Login>=0.6
-Werkzeug>=3.0
-tensorflow>=2.16
-opencv-python>=4.9
+Flask-WTF>=1.2
+Flask-Migrate>=4.1
+python-dotenv>=1.0
+
+# --- Database ----------------------------------------------------------------
+# psycopg 3 is the production driver; SQLite needs nothing extra.
+psycopg>=3.1
+psycopg-binary>=3.1
+
+# --- Private object storage --------------------------------------------------
+supabase>=2.0
+
+# --- Exports -----------------------------------------------------------------
 openpyxl>=3.1
+
+# --- Inference and image handling -------------------------------------------
+# See the deployment warning above before deploying.
+tensorflow>=2.16
+opencv-python==4.10.0.84
 numpy>=1.26
 Pillow>=10.0

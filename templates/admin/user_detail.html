@@ -1,0 +1,420 @@
+﻿{% extends "base.html" %}
+{% import "admin/_macros.html" as ui %}
+
+{% block title %}User Detail{% endblock %}
+
+{% block extra_styles %}
+<link href="{{ url_for('static', filename='css/admin.css') }}" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h3 class="mb-0">
+                <i class="bi bi-person-badge me-2"></i>{{ user.username }}
+            </h3>
+            <small class="text-muted">
+                User ID {{ user.id }} &middot; {{ ui.role_badge(user.role) }}
+                {{ ui.status_badge(user.is_active) }}
+            </small>
+        </div>
+        <a href="{{ url_for('admin.users') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to users
+        </a>
+    </div>
+
+    <div class="admin-shell">
+        {{ ui.admin_sidebar('users') }}
+
+        <div class="admin-content">
+
+            <!-- ==== Usage summary ==== -->
+            <div class="row">
+                {{ ui.stat_card('Detections', detection_count, 'bi-images', 'primary',
+                                sub=image_detections ~ ' image / ' ~ live_detections ~ ' live') }}
+                {{ ui.stat_card('Live Sessions', live_session_count, 'bi-camera-video', 'info') }}
+                {{ ui.stat_card('Live Duration', total_live_minutes ~ ' min', 'bi-stopwatch', 'success',
+                                sub=total_live_duration ~ ' second(s)') }}
+                {{ ui.stat_card('Logins', user.login_count or 0, 'bi-box-arrow-in-right', 'dark') }}
+            </div>
+
+            <div class="row">
+                <!-- ==== Account information ==== -->
+                <div class="col-lg-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>Account information</h6>
+                        </div>
+                        <div class="card-body">
+                            <dl class="admin-detail-list mb-0">
+                                <dt>Username</dt>
+                                <dd>{{ user.username }}</dd>
+
+                                <dt>Email</dt>
+                                <dd>{{ user.email }}</dd>
+
+                                <dt>Role</dt>
+                                <dd>{{ ui.role_badge(user.role) }}</dd>
+
+                                <dt>Account status</dt>
+                                <dd>{{ ui.status_badge(user.is_active) }}</dd>
+
+                                <dt>Joined (UTC)</dt>
+                                <dd>{{ user.created_at.strftime('%d %b %Y, %H:%M:%S') if user.created_at }}</dd>
+
+                                <dt>Last updated (UTC)</dt>
+                                <dd>{{ user.updated_at.strftime('%d %b %Y, %H:%M:%S') if user.updated_at }}</dd>
+
+                                <dt>Last login (UTC)</dt>
+                                <dd>
+                                    {{ user.last_login_at.strftime('%d %b %Y, %H:%M:%S')
+                                       if user.last_login_at else 'Never' }}
+                                </dd>
+
+                                <dt>Login count</dt>
+                                <dd>{{ user.login_count or 0 }}</dd>
+                            </dl>
+
+                            <hr>
+
+                            <dl class="admin-detail-list mb-0">
+                                <dt>Last detection (UTC)</dt>
+                                <dd>
+                                    {% if last_detection %}
+                                        {{ last_detection.detected_at.strftime('%d %b %Y, %H:%M:%S') }}
+                                        <span class="badge bg-secondary ms-1">{{ last_detection.emotion }}</span>
+                                    {% else %}
+                                        Never
+                                    {% endif %}
+                                </dd>
+
+                                <dt>Last activity (UTC)</dt>
+                                <dd>
+                                    {% if last_activity %}
+                                        {{ ui.activity_badge(last_activity.activity_type) }}
+                                        <small class="text-muted d-block">
+                                            {{ last_activity.created_at.strftime('%d %b %Y, %H:%M:%S') }}
+                                        </small>
+                                    {% else %}
+                                        Never
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==== Emotion profile + admin actions ==== -->
+                <div class="col-lg-8 mb-3">
+                    <div class="card mb-3">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Emotion profile for this user</h6>
+                        </div>
+                        <div class="card-body">
+                            {% if detection_count %}
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <div class="admin-chart-box"><canvas id="userEmotionChart"></canvas></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table table-sm admin-table mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Emotion</th>
+                                                <th class="text-end">Count</th>
+                                                <th class="text-end">Share</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% for row in emotion_profile %}
+                                            <tr>
+                                                <td>{{ row.emotion }}</td>
+                                                <td class="text-end">{{ row.count }}</td>
+                                                <td class="text-end">{{ row.percentage }}%</td>
+                                            </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {% else %}
+                            <p class="text-muted mb-0">
+                                This user has no detections recorded yet.
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Administrative actions</h6>
+                        </div>
+                        <div class="card-body">
+                            {% if user.id == current_user.id %}
+                            <p class="text-muted mb-0">
+                                <i class="bi bi-info-circle me-1"></i>
+                                This is your own account. Role changes, deactivation and deletion
+                                are disabled so you cannot lock yourself out.
+                            </p>
+                            {% else %}
+                            <div class="row g-3">
+                                <!-- Activate / deactivate -->
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 h-100">
+                                        <h6 class="small text-uppercase text-muted mb-2">
+                                            {{ 'Deactivate account' if user.is_active else 'Reactivate account' }}
+                                        </h6>
+                                        <p class="small text-muted">
+                                            {% if user.is_active %}
+                                                The user will be unable to log in and all detection
+                                                routes will refuse their requests. Their history is kept.
+                                            {% else %}
+                                                The user will be able to log in and use the application again.
+                                            {% endif %}
+                                        </p>
+                                        <form method="post"
+                                              action="{{ url_for('admin.toggle_user_active', user_id=user.id) }}"
+                                              onsubmit="return confirm('{{ 'Deactivate' if user.is_active else 'Reactivate' }} {{ user.username }}?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit"
+                                                    class="btn btn-sm {{ 'btn-warning' if user.is_active else 'btn-success' }}">
+                                                <i class="bi {{ 'bi-slash-circle' if user.is_active else 'bi-check-circle' }} me-1"></i>
+                                                {{ 'Deactivate' if user.is_active else 'Reactivate' }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- Change role -->
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 h-100">
+                                        <h6 class="small text-uppercase text-muted mb-2">Change role</h6>
+                                        <p class="small text-muted">
+                                            Granting admin gives full access to every account and all
+                                            detection data. This action is logged.
+                                        </p>
+                                        <form method="post"
+                                              action="{{ url_for('admin.change_user_role', user_id=user.id) }}"
+                                              onsubmit="return confirm('Change the role of {{ user.username }}?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select" name="role">
+                                                    <option value="user" {{ 'selected' if user.role == 'user' }}>User</option>
+                                                    <option value="admin" {{ 'selected' if user.role == 'admin' }}>Admin</option>
+                                                </select>
+                                                <button type="submit" class="btn btn-primary">Apply</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- Delete -->
+                                <div class="col-12">
+                                    <div class="admin-confirm-box">
+                                        <h6 class="small text-uppercase text-danger mb-2">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>
+                                            Danger zone — permanent deletion
+                                        </h6>
+                                        <p class="small text-muted">
+                                            Deleting <strong>{{ user.username }}</strong> also removes
+                                            {{ detection_count }} detection(s) and
+                                            {{ live_session_count }} live session(s). This cannot be undone.
+                                            Type the exact username to confirm.
+                                        </p>
+                                        <form method="post"
+                                              action="{{ url_for('admin.delete_user', user_id=user.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control" name="confirm_username"
+                                                       placeholder="{{ user.username }}"
+                                                       autocomplete="off" required>
+                                                <button type="submit" class="btn btn-danger">
+                                                    <i class="bi bi-trash me-1"></i>Delete permanently
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==== Detection history ==== -->
+            <div class="card mb-3">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-images me-2"></i>Detection history</h6>
+                    <span class="badge bg-secondary">{{ detection_count }} total</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm admin-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date / Time (UTC)</th>
+                                    <th>Type</th>
+                                    <th>Emotion</th>
+                                    <th class="text-end">Confidence</th>
+                                    <th class="text-end">Faces</th>
+                                    <th class="text-end">Processing (s)</th>
+                                    <th>Session</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for row in detections.items %}
+                                <tr>
+                                    <td>
+                                        {{ row.detected_at.strftime('%Y-%m-%d %H:%M:%S') if row.detected_at }}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'info' if row.detection_type == 'camera' else 'secondary' }}">
+                                            {{ row.detection_type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ row.emotion }}</td>
+                                    <td class="text-end">{{ '%.2f'|format(row.confidence or 0) }}%</td>
+                                    <td class="text-end">{{ row.face_count or 0 }}</td>
+                                    <td class="text-end">
+                                        {{ '%.3f'|format(row.processing_time) if row.processing_time else '—' }}
+                                    </td>
+                                    <td><small class="text-muted">{{ row.session_id or '—' }}</small></td>
+                                    <td class="text-end">
+                                        <a href="{{ url_for('admin.detection_detail', detection_id=row.id) }}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="8" class="text-center text-muted py-4">
+                                    No detections recorded for this user.
+                                </td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {{ ui.pagination(detections, 'admin.user_detail',
+                             {'user_id': user.id, 'per_page': detections.per_page}) }}
+
+            <!-- ==== Live sessions ==== -->
+            <div class="card mb-3">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-camera-video me-2"></i>Live session history</h6>
+                    <span class="badge bg-secondary">{{ live_session_count }} total</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm admin-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Started (UTC)</th>
+                                    <th>Ended (UTC)</th>
+                                    <th class="text-end">Duration</th>
+                                    <th>Dominant emotion</th>
+                                    <th class="text-end">Avg confidence</th>
+                                    <th class="text-end">Events</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for row in live_sessions %}
+                                <tr>
+                                    <td>{{ row.started_at.strftime('%Y-%m-%d %H:%M:%S') if row.started_at }}</td>
+                                    <td>{{ row.ended_at.strftime('%Y-%m-%d %H:%M:%S') if row.ended_at else 'In progress' }}</td>
+                                    <td class="text-end">{{ row.duration_minutes }} min</td>
+                                    <td>{{ row.dominant_emotion or '—' }}</td>
+                                    <td class="text-end">
+                                        {{ '%.2f'|format(row.average_confidence) if row.average_confidence else '—' }}
+                                    </td>
+                                    <td class="text-end">{{ row.total_detections or 0 }}</td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="6" class="text-center text-muted py-4">
+                                    No live sessions recorded for this user.
+                                </td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==== Recent activity ==== -->
+            <div class="card">
+                <div class="card-header py-2">
+                    <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent activity</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm admin-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>When (UTC)</th>
+                                    <th>Activity</th>
+                                    <th>IP address</th>
+                                    <th>User agent</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for row in activities %}
+                                <tr>
+                                    <td>{{ row.created_at.strftime('%Y-%m-%d %H:%M:%S') if row.created_at }}</td>
+                                    <td>{{ ui.activity_badge(row.activity_type) }}</td>
+                                    <td><small>{{ row.ip_address or '—' }}</small></td>
+                                    <td><small class="text-muted">{{ (row.user_agent or '')[:70] }}</small></td>
+                                    <td><small class="text-muted">{{ row.details or '—' }}</small></td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="5" class="text-center text-muted py-4">
+                                    No activity recorded for this user.
+                                </td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    'use strict';
+    const el = document.getElementById('userEmotionChart');
+    if (!el || typeof Chart === 'undefined') { return; }
+
+    new Chart(el, {
+        type: 'polarArea',
+        data: {
+            labels: {{ emotion_chart_labels | tojson }},
+            datasets: [{
+                data: {{ emotion_chart_data | tojson }},
+                backgroundColor: [
+                    'rgba(220,53,69,0.7)', 'rgba(253,126,20,0.7)',
+                    'rgba(111,66,193,0.7)', 'rgba(25,135,84,0.7)',
+                    'rgba(13,110,253,0.7)', 'rgba(32,201,151,0.7)',
+                    'rgba(108,117,125,0.7)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } }
+        }
+    });
+})();
+</script>
+{% endblock %}

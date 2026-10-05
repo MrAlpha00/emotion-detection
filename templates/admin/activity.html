@@ -1,0 +1,136 @@
+﻿{% extends "base.html" %}
+{% import "admin/_macros.html" as ui %}
+
+{% block title %}Activity Log{% endblock %}
+
+{% block extra_styles %}
+<link href="{{ url_for('static', filename='css/admin.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h3 class="mb-0"><i class="bi bi-clock-history me-2"></i>Activity Log</h3>
+            <small class="text-muted">
+                {{ activities.total }} event(s). IP addresses and user agents are collected
+                for security auditing — see the privacy notice in the README.
+            </small>
+        </div>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Dashboard
+        </a>
+    </div>
+
+    <div class="admin-shell">
+        {{ ui.admin_sidebar('activity') }}
+
+        <div class="admin-content">
+
+            <!-- ==== Filters ==== -->
+            <form method="get" action="{{ url_for('admin.activity') }}" class="admin-filters mb-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label" for="user_id">User</label>
+                        <select class="form-select form-select-sm" id="user_id" name="user_id">
+                            <option value="">All users</option>
+                            {% for u in users %}
+                            <option value="{{ u.id }}"
+                                {{ 'selected' if selected_user_id == u.id }}>{{ u.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="activity_type">Activity type</label>
+                        <select class="form-select form-select-sm" id="activity_type" name="activity_type">
+                            <option value="">All activities</option>
+                            {% for kind in activity_types %}
+                            <option value="{{ kind }}"
+                                {{ 'selected' if selected_activity_type == kind }}>
+                                {{ kind.replace('_', ' ').title() }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="date_from">From</label>
+                        <input type="date" class="form-control form-control-sm"
+                               id="date_from" name="date_from" value="{{ date_from }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="date_to">To</label>
+                        <input type="date" class="form-control form-control-sm"
+                               id="date_to" name="date_to" value="{{ date_to }}">
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-primary flex-fill">
+                            <i class="bi bi-funnel me-1"></i>Filter
+                        </button>
+                        <a href="{{ url_for('admin.activity') }}" class="btn btn-sm btn-outline-secondary">
+                            Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            <!-- ==== Activity table ==== -->
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover admin-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date / Time (UTC)</th>
+                                    <th>User</th>
+                                    <th>Activity</th>
+                                    <th>IP address</th>
+                                    <th>User agent</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for row in activities.items %}
+                                <tr>
+                                    <td class="text-nowrap">
+                                        {{ row.created_at.strftime('%Y-%m-%d %H:%M:%S') if row.created_at }}
+                                    </td>
+                                    <td>
+                                        {% if row.user %}
+                                            <a href="{{ url_for('admin.user_detail', user_id=row.user.id) }}">
+                                                {{ row.user.username }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">Deleted user</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ ui.activity_badge(row.activity_type) }}</td>
+                                    <td><code>{{ row.ip_address or '—' }}</code></td>
+                                    <td style="max-width: 320px;">
+                                        <small class="text-muted text-break">{{ row.user_agent or '—' }}</small>
+                                    </td>
+                                    <td><small class="text-muted">{{ row.details or '—' }}</small></td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        No activity matches the current filters.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {{ ui.pagination(activities, 'admin.activity', {
+                'user_id': selected_user_id or '',
+                'activity_type': selected_activity_type,
+                'date_from': date_from,
+                'date_to': date_to,
+                'per_page': activities.per_page
+            }) }}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -120,9 +120,7 @@ function analyzeCapturedImage() {
 
     fetch('/detect/capture', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: jsonPostHeaders(),
         body: JSON.stringify({ image: imageData })
     })
     .then(function(response) {

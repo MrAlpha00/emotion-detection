@@ -76,7 +76,7 @@ function startLiveDetection() {
 function startServerSession() {
     fetch('/live/start-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonPostHeaders(),
         body: JSON.stringify({})
     })
     .then(r => r.json())
@@ -143,7 +143,7 @@ function processFrame() {
 
     fetch('/live/process-frame', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonPostHeaders(),
         body: JSON.stringify({
             image: imageData,
             session_id: sessionId,
@@ -301,7 +301,7 @@ function stopLiveDetection() {
     if (dbSessionId) {
         fetch('/live/end-session', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: jsonPostHeaders(),
             body: JSON.stringify({
                 session_id: sessionId,
                 db_session_id: dbSessionId

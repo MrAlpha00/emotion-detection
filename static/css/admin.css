@@ -1,0 +1,215 @@
+/* =============================================================================
+   Admin UI styling
+   -----------------------------------------------------------------------------
+   Built on top of the existing Bootstrap 5 variables and the project's existing
+   custom stylesheet, so the admin area matches the rest of the application
+   rather than looking like a separate product.
+   ========================================================================== */
+
+:root {
+    --admin-sidebar-width: 250px;
+    --admin-accent: #2c3e50;
+    --admin-accent-soft: rgba(44, 62, 80, 0.08);
+}
+
+/* --- Layout ---------------------------------------------------------------- */
+.admin-shell {
+    display: flex;
+    min-height: calc(100vh - 140px);
+}
+
+.admin-sidebar {
+    flex: 0 0 var(--admin-sidebar-width);
+    width: var(--admin-sidebar-width);
+    background: var(--admin-accent);
+    border-radius: 0.75rem;
+    padding: 1rem 0.75rem;
+}
+
+.admin-sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.75);
+    border-radius: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.925rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.admin-sidebar .nav-link:hover,
+.admin-sidebar .nav-link:focus {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.admin-sidebar .nav-link.active {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-weight: 600;
+}
+
+.admin-sidebar .sidebar-heading {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.75rem 0.75rem 0.35rem;
+}
+
+.admin-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-left: 1.25rem;
+}
+
+/* --- Statistic cards ------------------------------------------------------- */
+.admin-stat-card {
+    border: 0;
+    border-left: 4px solid var(--admin-accent);
+    border-radius: 0.6rem;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+    height: 100%;
+}
+
+.admin-stat-card .stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+.admin-stat-card .stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0;
+}
+
+.admin-stat-card .stat-sub {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.admin-stat-card.stat-primary { border-left-color: #0d6efd; }
+.admin-stat-card.stat-success { border-left-color: #198754; }
+.admin-stat-card.stat-warning { border-left-color: #ffc107; }
+.admin-stat-card.stat-danger  { border-left-color: #dc3545; }
+.admin-stat-card.stat-info    { border-left-color: #0dcaf0; }
+.admin-stat-card.stat-dark    { border-left-color: #6c757d; }
+
+/* --- Tables ---------------------------------------------------------------- */
+.admin-table {
+    font-size: 0.9rem;
+}
+
+.admin-table thead th {
+    background: var(--admin-accent-soft);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #495057;
+    white-space: nowrap;
+}
+
+.admin-table td {
+    vertical-align: middle;
+}
+
+.admin-table code {
+    font-size: 0.8rem;
+}
+
+/* --- Filter bar ------------------------------------------------------------ */
+.admin-filters {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.6rem;
+    padding: 0.9rem 1rem;
+}
+
+.admin-filters .form-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6c757d;
+    margin-bottom: 0.2rem;
+}
+
+/* --- Charts ---------------------------------------------------------------- */
+.admin-chart-box {
+    position: relative;
+    height: 280px;
+}
+
+.admin-chart-box.tall {
+    height: 340px;
+}
+
+/* --- Detail list ----------------------------------------------------------- */
+.admin-detail-list dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.admin-detail-list dd {
+    margin-bottom: 0.6rem;
+}
+
+/* --- Confirmation ---------------------------------------------------------- */
+.admin-confirm-box {
+    background: #fff8f8;
+    border: 1px solid #f1c9c9;
+    border-radius: 0.6rem;
+    padding: 1rem;
+}
+
+/* --- Pagination ------------------------------------------------------------ */
+.pagination-sm .page-link {
+    font-size: 0.85rem;
+}
+
+/* --- Responsive ------------------------------------------------------------ */
+@media (max-width: 991.98px) {
+    .admin-shell {
+        flex-direction: column;
+    }
+
+    .admin-sidebar {
+        flex: 1 1 auto;
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    .admin-sidebar .nav {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .admin-sidebar .sidebar-heading {
+        display: none;
+    }
+
+    .admin-content {
+        padding-left: 0;
+    }
+
+    .admin-chart-box {
+        height: 240px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .admin-stat-card .stat-value {
+        font-size: 1.4rem;
+    }
+
+    .admin-table {
+        font-size: 0.82rem;
+    }
+}

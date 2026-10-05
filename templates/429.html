@@ -1,0 +1,11 @@
+﻿{% extends "base.html" %}
+
+{% block title %}429 - Too Many Requests{% endblock %}
+
+{% block content %}
+<div class="container mt-5 text-center">
+    <h1>429</h1>
+    <p>Too many requests. Please try again later.</p>
+    <a href="{{ url_for('dashboard.home') }}" class="btn btn-primary">Go Home</a>
+</div>
+{% endblock %}

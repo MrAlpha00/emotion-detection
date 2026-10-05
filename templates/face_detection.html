@@ -39,6 +39,7 @@
             <div class="tab-pane fade show active" id="upload-tab" role="tabpanel">
                 <form method="POST" action="{{ url_for('detection.detect_upload') }}"
                       enctype="multipart/form-data" id="upload-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click();">
                         <i class="bi bi-cloud-arrow-up"></i>

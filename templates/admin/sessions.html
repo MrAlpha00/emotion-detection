@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% import "admin/_macros.html" as ui %}
+
+{% block title %}Live Sessions{% endblock %}
+
+{% block extra_styles %}
+<link href="{{ url_for('static', filename='css/admin.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h3 class="mb-0"><i class="bi bi-camera-video me-2"></i>Live Sessions</h3>
+            <small class="text-muted">
+                {{ sessions.total }} session(s). Frames from live detection are analysed in the
+                browser and are never stored as images.
+            </small>
+        </div>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Dashboard
+        </a>
+    </div>
+
+    <div class="admin-shell">
+        {{ ui.admin_sidebar('sessions') }}
+
+        <div class="admin-content">
+
+            <form method="get" action="{{ url_for('admin.sessions') }}" class="admin-filters mb-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label" for="user_id">User</label>
+                        <select class="form-select form-select-sm" id="user_id" name="user_id">
+                            <option value="">All users</option>
+                            {% for u in users %}
+                            <option value="{{ u.id }}"
+                                {{ 'selected' if selected_user_id == u.id }}>{{ u.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="date_from">From</label>
+                        <input type="date" class="form-control form-control-sm"
+                               id="date_from" name="date_from" value="{{ date_from }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="date_to">To</label>
+                        <input type="date" class="form-control form-control-sm"
+                               id="date_to" name="date_to" value="{{ date_to }}">
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-primary flex-fill">
+                            <i class="bi bi-funnel me-1"></i>Filter
+                        </button>
+                        <a href="{{ url_for('admin.sessions') }}" class="btn btn-sm btn-outline-secondary">
+                            Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover admin-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Started (UTC)</th>
+                                    <th>Ended (UTC)</th>
+                                    <th class="text-end">Duration</th>
+                                    <th class="text-end">Detections</th>
+                                    <th>Dominant emotion</th>
+                                    <th class="text-end">Avg confidence</th>
+                                    <th>State</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for row in sessions.items %}
+                                <tr>
+                                    <td>{{ row.id }}</td>
+                                    <td>
+                                        <a href="{{ url_for('admin.user_detail', user_id=row.user_id) }}">
+                                            {{ row.user.username if row.user else '—' }}
+                                        </a>
+                                    </td>
+                                    <td class="text-nowrap">
+                                        {{ row.started_at.strftime('%Y-%m-%d %H:%M:%S') if row.started_at }}
+                                    </td>
+                                    <td class="text-nowrap">
+                                        {{ row.ended_at.strftime('%Y-%m-%d %H:%M:%S') if row.ended_at else '—' }}
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        {% if row.duration_seconds %}
+                                            {{ '%.1f'|format(row.duration_minutes) }} min
+                                            <small class="text-muted">({{ row.duration_seconds }}s)</small>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">{{ row.total_detections or 0 }}</td>
+                                    <td>{{ row.dominant_emotion or '—' }}</td>
+                                    <td class="text-end">
+                                        {% if row.average_confidence is not none %}
+                                            {{ '%.2f'|format(row.average_confidence) }}%
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.is_active_session %}
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="bi bi-broadcast me-1"></i>Open
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Closed</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-4">
+                                        No live sessions match the current filters.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {{ ui.pagination(sessions, 'admin.sessions', {
+                'user_id': selected_user_id or '',
+                'date_from': date_from,
+                'date_to': date_to,
+                'per_page': sessions.per_page
+            }) }}
+        </div>
+    </div>
+</div>
+{% endblock %}

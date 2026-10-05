@@ -423,8 +423,13 @@ Do not simply delete the `tensorflow` line to make a build pass. That yields an
 app which builds and then refuses every prediction, which is far more confusing
 than a build that fails loudly.
 
-`vercel.json` sets a 3008 MB memory limit and a 60 s function timeout; both are
-at or near the plan maximum and may still be insufficient for TensorFlow.
+There is no `vercel.json` in this repository. Vercel's zero-configuration Flask
+support detects `app.py` at the project root and uses the module-level `app`
+object as the WSGI callable, so no `builds`/`routes`/`functions` overrides are
+needed — and mixing `functions` with `builds` is rejected by the platform. Set
+the function memory (3008 MB) and max duration (60 s) in the Vercel project
+settings instead; both are at or near the plan maximum and may still be
+insufficient for TensorFlow.
 
 ---
 

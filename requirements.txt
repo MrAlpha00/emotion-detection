@@ -48,6 +48,11 @@ openpyxl>=3.1
 # --- Inference and image handling -------------------------------------------
 # See the deployment warning above before deploying.
 tensorflow>=2.16
-opencv-python==4.10.0.84
+# Headless build: this project only uses CascadeClassifier, colour conversion,
+# resize, drawing and imencode/imdecode - never imshow/namedWindow - so the GUI
+# variant's libGL.so.1 dependency is both unused and fatal on Linux serverless
+# hosts such as Vercel. Exactly one OpenCV package may be installed; the GUI and
+# headless distributions install into the same `cv2` package and conflict.
+opencv-python-headless==4.10.0.84
 numpy>=1.26
 Pillow>=10.0

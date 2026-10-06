@@ -91,6 +91,42 @@ class StorageError(RuntimeError):
     """Raised when a storage operation cannot be completed."""
 
 
+# Anything shaped like a credential is scrubbed before an exception is logged.
+# The Storage API carries its key in a header rather than the URL, so this is
+# defence in depth against a lower-level client error that embeds a full URL.
+_SECRET_PATTERNS = (
+    re.compile(r'sb_secret_[A-Za-z0-9]+'),
+    re.compile(r'sb_publishable_[A-Za-z0-9]+'),
+    re.compile(r'eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}'),
+)
+
+
+def describe_storage_error(exc):
+    """
+    Render a Storage API failure as a short, credential-free log detail.
+
+    storage3 raises ``StorageApiError``, whose ``str()`` is a dict-like repr
+    such as ``{'statusCode': 404, 'error': 'Bucket not found', ...}``. The
+    structured fields are read instead, so a deployment log line reads like a
+    report - ``StorageApiError, status=404, code=Bucket not found,
+    message=Bucket not found`` - rather than a Python repr. The result is
+    length-capped and scrubbed of anything key-shaped. Bucket names and object
+    keys are not secrets; the caller logs those.
+    """
+    parts = [type(exc).__name__]
+    for attr in ('status', 'code', 'message'):
+        value = getattr(exc, attr, None)
+        if value not in (None, ''):
+            parts.append(f'{attr}={value}')
+    if len(parts) == 1:
+        # Not a storage3 error (network failure, timeout, ...).
+        parts.append(str(exc))
+    text = ', '.join(parts)
+    for pattern in _SECRET_PATTERNS:
+        text = pattern.sub('[redacted]', text)
+    return text[:400]
+
+
 class BaseStorage:
     """Common interface for every storage backend."""
 
@@ -218,7 +254,10 @@ class SupabaseStorage(BaseStorage):
                 file_options={'content-type': content_type, 'upsert': 'false'},
             )
         except Exception as exc:
-            raise StorageError(f'Supabase upload failed: {exc}')
+            raise StorageError(
+                f'Supabase upload failed (bucket={self.bucket!r}, key={key!r}): '
+                f'{describe_storage_error(exc)}'
+            ) from exc
         return key
 
     def load(self, key):
@@ -226,8 +265,11 @@ class SupabaseStorage(BaseStorage):
             return None
         try:
             data = self._client.storage.from_(self.bucket).download(key)
-        except Exception:
-            logger.warning('Supabase download failed for key %s', key)
+        except Exception as exc:
+            logger.warning(
+                'Supabase download failed (bucket=%r, key=%s): %s',
+                self.bucket, key, describe_storage_error(exc),
+            )
             return None
         content_type = 'image/png' if str(key).lower().endswith('.png') else 'image/jpeg'
         if isinstance(data, (bytes, bytearray)):
@@ -244,7 +286,10 @@ class SupabaseStorage(BaseStorage):
         try:
             self._client.storage.from_(self.bucket).remove([key])
         except Exception as exc:
-            logger.warning('Supabase delete failed for key %s: %s', key, exc)
+            logger.warning(
+                'Supabase delete failed (bucket=%r, key=%s): %s',
+                self.bucket, key, describe_storage_error(exc),
+            )
 
     def url_for(self, key, ttl=None):
         if not is_valid_object_key(key):
@@ -253,8 +298,11 @@ class SupabaseStorage(BaseStorage):
             signed = self._client.storage.from_(self.bucket).create_signed_url(
                 key, ttl or self.ttl
             )
-        except Exception:
-            logger.warning('Could not create a signed URL for key %s', key)
+        except Exception as exc:
+            logger.warning(
+                'Could not create a signed URL (bucket=%r, key=%s): %s',
+                self.bucket, key, describe_storage_error(exc),
+            )
             return None
         if isinstance(signed, dict):
             # supabase-py v2 returns {'signedURL': '/object/sign/...', 'signedUrl': ...}
@@ -409,6 +457,7 @@ __all__ = [
     'UnavailableStorage',
     'build_object_key',
     'bytes_io',
+    'describe_storage_error',
     'describe_storage',
     'encode_image',
     'encode_png',

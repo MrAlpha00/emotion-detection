@@ -176,9 +176,14 @@ def _analyse_and_store(image, detection_type):
     Raises ModelUnavailableError or StorageError on failure. Never returns a
     fabricated prediction.
     """
-    started = time.perf_counter()
+    t0 = time.perf_counter()
+    t_face = 0.0
+    t_inf = 0.0
+    t_store = 0.0
 
+    t1 = time.perf_counter()
     faces = detect_faces(image)
+    t_face = (time.perf_counter() - t1) * 1000.0
     if not faces:
         return None, 'No face was detected in the image. Please try a clearer photo.'
 
@@ -187,15 +192,20 @@ def _analyse_and_store(image, detection_type):
     if face_crop is None or face_crop.size == 0:
         return None, 'Failed to crop the detected face. Please try another image.'
 
+    t1 = time.perf_counter()
     prediction = emotion_predictor.predict(face_crop)  # raises if unavailable
+    t_inf = (time.perf_counter() - t1) * 1000.0
 
-    processing_time = round(time.perf_counter() - started, 3)
+    processing_time = round(time.perf_counter() - t0, 3)
 
     annotated = draw_emotion_boxes(
         image, [primary_face], [prediction['emotion']], [prediction['confidence']]
     )
 
+    t1 = time.perf_counter()
     upload_key, result_key = _store_detection_images(image, annotated, current_user.id)
+    t_store = (time.perf_counter() - t1) * 1000.0
+    logger.info('TIMING_ANALYSE face_detect=%.2fms inference=%.2fms storage=%.2fms total=%.2fms', t_face, t_inf, t_store, (time.perf_counter()-t0)*1000.0)
 
     result = {
         'emotion': prediction['emotion'],
@@ -211,6 +221,11 @@ def _analyse_and_store(image, detection_type):
         # lives only in this user's signed session cookie and is compared with
         # constant time, so a preview can never be reached by guessing an id.
         'preview_token': secrets.token_urlsafe(32),
+        '_timing': {
+            'face_detect_ms': t_face,
+            'inference_ms': t_inf,
+            'storage_ms': t_store,
+        }
     }
     return result, None
 
@@ -314,21 +329,56 @@ def _sniff_image_type(data):
 @active_user_required
 def detect_capture():
     """Handle a single browser-captured still frame (base64) and run detection."""
+    t_total_start = time.perf_counter()
+    t_recv = 0.0
+    t_decode = 0.0
+    t_analyse_total_contribution_face = 0.0  # we'll log from analyse
+    t_inf = 0.0
+    t_store = 0.0
+    t_save_db = 0.0
+    t_resp = 0.0
+
+    t_model_check = time.perf_counter()
     if not emotion_predictor.ensure_loaded():
+        logger.info('TIMING_CAPTURE recv=%.2fms decode=%.2fms face_detect=%.2fms inference=%.2fms storage=%.2fms save_db=%.2fms resp=%.2fms total_server=%.2fms',
+                    0, 0, 0, 0, 0, 0, 0, (time.perf_counter()-t_total_start)*1000.0)
         return _model_unavailable_response()
 
     try:
+        t1 = time.perf_counter()
         data = request.get_json(silent=True) or {}
+        t_recv = (time.perf_counter() - t1) * 1000.0
+
+        t1 = time.perf_counter()
         image, error = decode_image_payload(data.get('image'))
+        t_decode = (time.perf_counter() - t1) * 1000.0
         if image is None:
+            t_resp = (time.perf_counter() - (t1)) * 0.0  # not needed
+            logger.info('TIMING_CAPTURE recv=%.2fms decode=%.2fms face_detect=%.2fms inference=%.2fms storage=%.2fms save_db=%.2fms resp=%.2fms total_server=%.2fms',
+                        t_recv, t_decode, 0, 0, 0, 0, 0, (time.perf_counter()-t_total_start)*1000.0)
             return jsonify({'success': False, 'error': error}), 400
 
+        t1 = time.perf_counter()
         result, error = _analyse_and_store(image, 'camera')
+        t_analyse = (time.perf_counter() - t1) * 1000.0
+        timing = result.get('_timing') if result else {}
+        t_face = timing.get('face_detect_ms', 0.0) if timing else 0.0
+        t_inf = timing.get('inference_ms', 0.0) if timing else 0.0
+        t_store = timing.get('storage_ms', 0.0) if timing else 0.0
         if result is None:
+            logger.info('TIMING_CAPTURE recv=%.2fms decode=%.2fms face_detect=%.2fms inference=%.2fms storage=%.2fms save_db=%.2fms resp=%.2fms total_server=%.2fms',
+                        t_recv, t_decode, t_face, t_inf, t_store, 0.0, 0.0, (time.perf_counter()-t_total_start)*1000.0)
             return jsonify({'success': False, 'error': error}), 200
 
+        # Remove internal timing before storing in session
+        result.pop('_timing', None)
         session['detection_result'] = result
-        return jsonify({'success': True, 'redirect': url_for('detection.show_result')})
+        t2 = time.perf_counter()
+        resp = jsonify({'success': True, 'redirect': url_for('detection.show_result')})
+        t_resp = (time.perf_counter() - t2) * 1000.0
+        logger.info('TIMING_CAPTURE recv=%.2fms decode=%.2fms face_detect=%.2fms inference=%.2fms storage=%.2fms save_db=%.2fms resp=%.2fms total_server=%.2fms',
+                    t_recv, t_decode, t_face, t_inf, t_store, 0.0, t_resp, (time.perf_counter()-t_total_start)*1000.0)
+        return resp
 
     except ModelUnavailableError:
         return _model_unavailable_response()

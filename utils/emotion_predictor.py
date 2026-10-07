@@ -123,7 +123,9 @@ class EmotionPredictor:
             try:
                 import tensorflow as tf  # noqa: PLC0415 - deliberately lazy
 
+                t_load = __import__('time').perf_counter()
                 self._model = tf.keras.models.load_model(model_path, compile=False)
+                logger.info('TIMING_MODEL_LOAD model_load_ms=%.2f path=%s', (__import__('time').perf_counter()-t_load)*1000.0, model_path)
                 logger.info('Emotion model file loaded from %s', model_path)
             except Exception as exc:
                 self._model = None

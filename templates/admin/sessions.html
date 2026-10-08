@@ -68,8 +68,8 @@
                                 <tr>
                                     <th>ID</th>
                                     <th>User</th>
-                                    <th>Started (UTC)</th>
-                                    <th>Ended (UTC)</th>
+                                    <th>Started (IST)</th>
+                                    <th>Ended (IST)</th>
                                     <th class="text-end">Duration</th>
                                     <th class="text-end">Detections</th>
                                     <th>Dominant emotion</th>
@@ -87,10 +87,10 @@
                                         </a>
                                     </td>
                                     <td class="text-nowrap">
-                                        {{ row.started_at.strftime('%Y-%m-%d %H:%M:%S') if row.started_at }}
+                                        {{ (row.started_at|to_local).strftime('%Y-%m-%d %H:%M:%S') if row.started_at }}
                                     </td>
                                     <td class="text-nowrap">
-                                        {{ row.ended_at.strftime('%Y-%m-%d %H:%M:%S') if row.ended_at else '—' }}
+                                        {{ (row.ended_at|to_local).strftime('%Y-%m-%d %H:%M:%S') if row.ended_at else '—' }}
                                     </td>
                                     <td class="text-end text-nowrap">
                                         {% if row.duration_seconds %}

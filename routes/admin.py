@@ -1011,7 +1011,14 @@ def _stream_admin_export():
             flash('There is no data to export.', 'info')
             return redirect(url_for('admin.exports'))
 
-        filename = f'Emotion_Admin_Export_{datetime.now(timezone.utc).strftime("%Y-%m-%d")}.xlsx'
+        # Report date is stamped in the display timezone, matching the
+        # timestamps inside the workbook.
+        from utils.timezones import display_timezone
+
+        filename = (
+            f'Emotion_Admin_Export_'
+            f'{datetime.now(display_timezone()).strftime("%Y-%m-%d")}.xlsx'
+        )
 
         log_activity(
             ActivityType.ADMIN_EXPORT,

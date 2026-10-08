@@ -163,7 +163,7 @@
                                 <table class="table table-sm admin-table mb-0">
                                     <thead>
                                         <tr>
-                                            <th>When (UTC)</th>
+                                            <th>When (IST)</th>
                                             <th>User</th>
                                             <th>Type</th>
                                             <th>Emotion</th>
@@ -175,7 +175,7 @@
                                         <tr>
                                             <td>
                                                 <a href="{{ url_for('admin.detection_detail', detection_id=row.id) }}">
-                                                    {{ row.detected_at.strftime('%Y-%m-%d %H:%M') if row.detected_at }}
+                                                    {{ (row.detected_at|to_local).strftime('%Y-%m-%d %H:%M') if row.detected_at }}
                                                 </a>
                                             </td>
                                             <td>{{ row.username }}</td>
@@ -218,7 +218,7 @@
                                             </td>
                                             <td>{{ item.username }}</td>
                                             <td class="text-end small text-muted">
-                                                {{ item.created_at.strftime('%Y-%m-%d %H:%M') if item.created_at }}
+                                                {{ (item.created_at|to_local).strftime('%Y-%m-%d %H:%M') if item.created_at }}
                                             </td>
                                         </tr>
                                     {% else %}

@@ -178,6 +178,14 @@ def create_app(config_object=None):
     # -------------------------------------------------------------------------
     # Template context
     # -------------------------------------------------------------------------
+    # Timestamps are stored in UTC; `|to_local` converts any stored value
+    # (naive/aware datetime or ISO-8601 string) to the configured display
+    # timezone (Asia/Kolkata by default) before it is rendered. See
+    # utils/timezones.py.
+    from utils.timezones import to_display
+
+    app.jinja_env.filters['to_local'] = to_display
+
     @app.context_processor
     def inject_globals():
         from utils.emotion_predictor import emotion_predictor

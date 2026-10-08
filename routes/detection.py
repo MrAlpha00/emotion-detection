@@ -193,7 +193,12 @@ def _analyse_and_store(image, detection_type):
         return None, 'Failed to crop the detected face. Please try another image.'
 
     t1 = time.perf_counter()
-    prediction = emotion_predictor.predict(face_crop)  # raises if unavailable
+    # face_context is diagnostic only: it labels the PREDICT_PROBS log line so
+    # the raw probability vector can be traced back to a specific face.
+    prediction = emotion_predictor.predict(
+        face_crop,
+        face_context=f'{detection_type}: largest of {len(faces)} face(s)',
+    )  # raises if unavailable
     t_inf = (time.perf_counter() - t1) * 1000.0
 
     processing_time = round(time.perf_counter() - t0, 3)
@@ -848,7 +853,11 @@ def process_live_frame():
             return jsonify({'success': True, 'face_detected': False})
 
         started = time.perf_counter()
-        prediction = emotion_predictor.predict(face_crop)
+        # Diagnostic context for the PREDICT_PROBS log line only.
+        prediction = emotion_predictor.predict(
+            face_crop,
+            face_context=f'live: largest of {len(faces)} face(s)',
+        )
         processing_time = round(time.perf_counter() - started, 3)
 
         # Persist the detection EVENT only. The frame itself is not stored.

@@ -81,8 +81,8 @@
                                     <th>Email</th>
                                     <th>Role</th>
                                     <th>Status</th>
-                                    <th>Joined (UTC)</th>
-                                    <th>Last Login (UTC)</th>
+                                    <th>Joined (IST)</th>
+                                    <th>Last Login (IST)</th>
                                     <th class="text-end">Logins</th>
                                     <th class="text-end">Detections</th>
                                     <th class="text-end">Sessions</th>
@@ -104,10 +104,10 @@
                                     <td><small>{{ user.email }}</small></td>
                                     <td>{{ ui.role_badge(user.role) }}</td>
                                     <td>{{ ui.status_badge(user.is_active) }}</td>
-                                    <td><small>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at }}</small></td>
+                                    <td><small>{{ (user.created_at|to_local).strftime('%Y-%m-%d') if user.created_at }}</small></td>
                                     <td>
                                         <small>
-                                            {{ user.last_login_at.strftime('%Y-%m-%d %H:%M')
+                                            {{ (user.last_login_at|to_local).strftime('%Y-%m-%d %H:%M')
                                                if user.last_login_at else '—' }}
                                         </small>
                                     </td>

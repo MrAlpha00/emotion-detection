@@ -51,7 +51,7 @@
                             <small class="text-muted d-block">Date</small>
                             <strong>
                                 {% if result.detected_at %}
-                                    {% set dt = result.detected_at %}
+                                    {% set dt = result.detected_at|to_local %}
                                     {% if dt is string %}
                                         {{ dt[:10] }}
                                     {% else %}
@@ -66,7 +66,7 @@
                             <small class="text-muted d-block">Time</small>
                             <strong>
                                 {% if result.detected_at %}
-                                    {% set dt = result.detected_at %}
+                                    {% set dt = result.detected_at|to_local %}
                                     {% if dt is string %}
                                         {{ dt[11:19] }}
                                     {% else %}

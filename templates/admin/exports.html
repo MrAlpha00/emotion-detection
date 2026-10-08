@@ -83,7 +83,7 @@
                         <table class="table table-sm admin-table mb-0">
                             <thead>
                                 <tr>
-                                    <th>When (UTC)</th>
+                                    <th>When (IST)</th>
                                     <th>Exported by</th>
                                     <th>Summary</th>
                                 </tr>
@@ -92,7 +92,7 @@
                             {% for row in recent_exports %}
                                 <tr>
                                     <td class="text-nowrap">
-                                        {{ row.created_at.strftime('%Y-%m-%d %H:%M:%S') if row.created_at }}
+                                        {{ (row.created_at|to_local).strftime('%Y-%m-%d %H:%M:%S') if row.created_at }}
                                     </td>
                                     <td>{{ row.user.username if row.user else '—' }}</td>
                                     <td><small class="text-muted">{{ row.details or '—' }}</small></td>

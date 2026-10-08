@@ -123,7 +123,7 @@
                 <tbody>
                     {% for d in recent_detections %}
                     <tr>
-                        <td>{{ d.detected_at.strftime('%d %b %Y, %I:%M %p') if d.detected_at else '—' }}</td>
+                        <td>{{ (d.detected_at|to_local).strftime('%d %b %Y, %I:%M %p') if d.detected_at else '—' }}</td>
                         <td>
                             <span class="badge bg-{{ 'primary' if d.detection_type == 'image' else 'info' }}">
                                 {{ d.detection_type|capitalize }}

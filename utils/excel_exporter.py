@@ -13,7 +13,7 @@
 # credential are never written to a worksheet.
 # =============================================================================
 
-from datetime import datetime, timezone
+from datetime import datetime
 from io import BytesIO
 
 from openpyxl import Workbook
@@ -21,6 +21,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from config import Config
+from utils.timezones import to_display
 
 # -----------------------------------------------------------------------------
 # Shared styling
@@ -54,22 +55,22 @@ FORBIDDEN_HEADERS = {
 # Helpers
 # -----------------------------------------------------------------------------
 def _fmt_dt(value, fmt):
-    """Format a datetime, tolerating None and naive/aware mixes."""
+    """
+    Format a timestamp for a worksheet cell.
+
+    The value is converted to the configured display timezone first (UTC
+    storage -> Asia/Kolkata wall clock by default), so exported sheets show
+    the same times as the web pages. Tolerates None and naive/aware mixes.
+    """
     if value is None:
         return ''
+    value = to_display(value)
     if isinstance(value, datetime):
         try:
             return value.strftime(fmt)
         except (ValueError, OSError):
             return value.isoformat()
     return str(value)
-
-
-def _utc(value):
-    """Attach UTC to a naive timestamp read back from the database."""
-    if isinstance(value, datetime) and value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value
 
 
 def _write_sheet(ws, headers, rows, center_columns=()):
@@ -135,7 +136,7 @@ def _detection_rows(detections, username_lookup=None):
     """
     rows = []
     for detection in detections:
-        detected_at = _utc(detection.detected_at)
+        detected_at = detection.detected_at
         username = detection.user.username if getattr(detection, 'user', None) else (username_lookup or '')
         rows.append([
             detection.id,
@@ -156,8 +157,8 @@ def _session_rows(sessions, username_lookup=None):
     """Live-session rows. The session token is never included."""
     rows = []
     for session in sessions:
-        started = _utc(session.started_at)
-        ended = _utc(session.ended_at)
+        started = session.started_at
+        ended = session.ended_at
         username = session.user.username if getattr(session, 'user', None) else (username_lookup or '')
         rows.append([
             session.id,
@@ -186,9 +187,9 @@ def _user_rows(users):
             user.role or '',
             'Active' if user.is_active else 'Inactive',
             user.login_count or 0,
-            _fmt_dt(_utc(user.created_at), Config.TIMESTAMP_DISPLAY_FORMAT),
-            _fmt_dt(_utc(user.updated_at), Config.TIMESTAMP_DISPLAY_FORMAT),
-            _fmt_dt(_utc(user.last_login_at), Config.TIMESTAMP_DISPLAY_FORMAT),
+            _fmt_dt(user.created_at, Config.TIMESTAMP_DISPLAY_FORMAT),
+            _fmt_dt(user.updated_at, Config.TIMESTAMP_DISPLAY_FORMAT),
+            _fmt_dt(user.last_login_at, Config.TIMESTAMP_DISPLAY_FORMAT),
         ])
     return rows
 
@@ -203,31 +204,36 @@ def _activity_rows(activities):
             activity.ip_address or '',
             (activity.user_agent or '')[:120],
             activity.details or '',
-            _fmt_dt(_utc(activity.created_at), Config.TIMESTAMP_DISPLAY_FORMAT),
+            _fmt_dt(activity.created_at, Config.TIMESTAMP_DISPLAY_FORMAT),
         ])
     return rows
 
 
+# Exported timestamps are rendered in the display timezone (Asia/Kolkata by
+# default), so the header states that zone rather than UTC.
+_TZ_LABEL = getattr(Config, 'DISPLAY_TIMEZONE_LABEL', 'IST')
+
 DETECTION_HEADERS = [
     'ID', 'User', 'Date', 'Time', 'Detection Type', 'Emotion',
     'Confidence (%)', 'Face Count', 'Processing Time (s)',
-    'Timestamp (UTC)',
+    f'Timestamp ({_TZ_LABEL})',
 ]
 
 SESSION_HEADERS = [
     'ID', 'User', 'Start Date', 'Start Time', 'End Date', 'End Time',
     'Duration (seconds)', 'Dominant Emotion', 'Average Confidence (%)',
-    'Total Detections', 'Started At (UTC)',
+    'Total Detections', f'Started At ({_TZ_LABEL})',
 ]
 
 USER_HEADERS = [
     'ID', 'Username', 'Email', 'Role', 'Account Status', 'Login Count',
-    'Joined (UTC)', 'Last Updated (UTC)', 'Last Login (UTC)',
+    f'Joined ({_TZ_LABEL})', f'Last Updated ({_TZ_LABEL})',
+    f'Last Login ({_TZ_LABEL})',
 ]
 
 ACTIVITY_HEADERS = [
     'ID', 'Username', 'Activity', 'IP Address', 'User Agent', 'Details',
-    'Timestamp (UTC)',
+    f'Timestamp ({_TZ_LABEL})',
 ]
 
 

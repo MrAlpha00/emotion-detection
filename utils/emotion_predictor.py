@@ -29,6 +29,12 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
+# Dedicated logger for raw per-face model output. Keeping it on its own named
+# logger means the probability diagnostics can be routed to a separate file or
+# silenced (PREDICT_LOG_PROBABILITIES / logger level) without touching the
+# application log. Every line is tagged PREDICT_PROBS for easy grepping.
+diagnostic_logger = logging.getLogger('diagnostics.prediction')
+
 # Keep TensorFlow quiet about CPU feature detection.
 os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '2')
 os.environ.setdefault('TF_ENABLE_ONEDNN_OPTS', '0')
@@ -304,9 +310,15 @@ class EmotionPredictor:
         processed = processed.reshape(1, h, w, expected_channels)
         return processed
 
-    def predict(self, face_image):
+    def predict(self, face_image, face_context=None):
         """
         Classify a cropped face.
+
+        Args:
+            face_image: cropped BGR face (as produced by utils.face_detector).
+            face_context: optional diagnostic label describing which face is
+                being scored (e.g. "largest of 3 faces"). It only appears in
+                the PREDICT_PROBS log line - it never affects the result.
 
         Returns:
             dict:
@@ -348,6 +360,25 @@ class EmotionPredictor:
             label: round(float(probabilities[i]) * 100.0, 2)
             for i, label in enumerate(Config.EMOTION_LABELS)
         }
+
+        # ------------------------------------------------------------------
+        # Diagnostic: log the ACTUAL per-face probability vector.
+        # Purely observational - it runs after the class has been chosen from
+        # argmax and cannot change the prediction, the stored result or the
+        # class mapping. It exists so model quality can be evaluated later by
+        # comparing the raw distribution against the labelled outcome.
+        # ------------------------------------------------------------------
+        if getattr(Config, 'PREDICT_LOG_PROBABILITIES', True):
+            ranked = sorted(prob_dict.items(), key=lambda kv: kv[1], reverse=True)
+            diagnostic_logger.info(
+                'PREDICT_PROBS face=%s predicted=%s confidence=%.2f%% '
+                'sum=%.2f%% raw=%s',
+                face_context or 'unspecified',
+                predicted_emotion,
+                confidence,
+                sum(prob_dict.values()),
+                ' '.join(f'{label}:{pct:.2f}%' for label, pct in ranked),
+            )
 
         return {
             'emotion': predicted_emotion,

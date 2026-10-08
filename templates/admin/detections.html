@@ -82,7 +82,7 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>When (UTC)</th>
+                                    <th>When (IST)</th>
                                     <th>User</th>
                                     <th>Type</th>
                                     <th>Emotion</th>
@@ -98,7 +98,7 @@
                                 <tr>
                                     <td>{{ row.id }}</td>
                                     <td class="text-nowrap">
-                                        {{ row.detected_at.strftime('%Y-%m-%d %H:%M:%S') if row.detected_at }}
+                                        {{ (row.detected_at|to_local).strftime('%Y-%m-%d %H:%M:%S') if row.detected_at }}
                                     </td>
                                     <td>
                                         <a href="{{ url_for('admin.user_detail', user_id=row.user_id) }}">

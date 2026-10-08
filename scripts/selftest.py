@@ -530,6 +530,57 @@ def main():
 
     check('Admin workbook has 4 sheets and no session-token/password columns', t_exports)
 
+    # --- 15b. timezone display -----------------------------------------------
+    def t_timezone_display():
+        """Stored UTC must render as IST (zone-aware conversion, no magic offsets)."""
+        from datetime import datetime
+
+        from openpyxl import load_workbook
+
+        from models.detection import Detection
+        from models.user import User
+        from utils.database import db
+        from utils.excel_exporter import build_user_workbook
+        from utils.timezones import to_display
+
+        with app.app_context():
+            bob_id = User.query.filter_by(username='bob').first().id
+
+        det_id = add_detection(app, bob_id, emotion='Happy')
+
+        # A known UTC instant: 10:00 UTC == 15:30 IST on the same day.
+        known_utc = datetime(2026, 1, 1, 10, 0, 0)
+        with app.app_context():
+            row = db.session.get(Detection, det_id)
+            row.detected_at = known_utc
+            db.session.commit()
+
+        converted = to_display(known_utc)
+        assert converted.tzinfo is not None, 'display timestamp is naive'
+        assert converted.utcoffset().total_seconds() == 5.5 * 3600, converted.utcoffset()
+
+        # The owner's result page shows the converted wall-clock time.
+        c = make_client(app)
+        login(c, app, 'bob', 'BobPassword1')
+        resp = c.get(f'/result/{det_id}')
+        assert resp.status_code == 200, resp.status_code
+        html = resp.get_data(as_text=True)
+        assert '01 Jan 2026' in html, 'IST date not rendered on the result page'
+        assert '03:30:00 PM' in html, 'IST time not rendered on the result page'
+        assert '10:00:00' not in html, 'raw UTC time leaked into the result page'
+
+        # The Excel export shows the same displayed time and labels the zone.
+        with app.app_context():
+            detections = Detection.query.filter_by(id=det_id).all()
+            buf = build_user_workbook(detections, [], username='bob')
+        wb = load_workbook(buf)
+        ws = wb['Detection History']
+        assert 'IST' in str(ws.cell(row=1, column=10).value), ws.cell(row=1, column=10).value
+        assert ws.cell(row=2, column=4).value == '03:30:00 PM', ws.cell(row=2, column=4).value
+        return True
+
+    check('Timestamps render in IST on the result page and in Excel', t_timezone_display)
+
     def t_user_export_route():
         c = make_client(app)
         login(c, app, 'bob', 'BobPassword1')

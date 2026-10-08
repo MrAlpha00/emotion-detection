@@ -9,7 +9,7 @@
 # =============================================================================
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
 from flask import Blueprint, flash, redirect, send_file, url_for
 from flask_login import current_user
@@ -54,9 +54,13 @@ def export_results():
             flash('There is no data to export yet.', 'info')
             return redirect(url_for('dashboard.profile'))
 
+        # Report date is stamped in the user's display timezone, matching the
+        # timestamps inside the workbook.
+        from utils.timezones import display_timezone
+
         filename = (
             f'Emotion_Detection_Report_{current_user.username}_'
-            f'{datetime.now(timezone.utc).strftime("%Y-%m-%d")}.xlsx'
+            f'{datetime.now(display_timezone()).strftime("%Y-%m-%d")}.xlsx'
         )
 
         log_activity(

@@ -402,11 +402,38 @@ class Config:
     RATE_LIMIT_MAX_REQUESTS = _env_int('RATE_LIMIT_MAX_REQUESTS', 40)
 
     # -------------------------------------------------------------------------
+    # Timestamp storage / display timezones
+    # -------------------------------------------------------------------------
+    # STORAGE is always UTC: every column is a naive db.DateTime written from a
+    # timezone-aware datetime.now(timezone.utc) value (see models/*.py). Naive
+    # values read back from the database are therefore interpreted as UTC.
+    #
+    # DISPLAY converts those UTC values through this IANA zone before anything
+    # is rendered or exported. It is a proper zone conversion (zoneinfo), never
+    # a hardcoded "+5:30" offset, so daylight-saving rules of the zone apply.
+    DISPLAY_TIMEZONE = (os.getenv('DISPLAY_TIMEZONE') or '').strip() or 'Asia/Kolkata'
+
+    # Label appended to exported column headers so the sheet states which zone
+    # its timestamps are in (e.g. "Timestamp (IST)").
+    DISPLAY_TIMEZONE_LABEL = (
+        (os.getenv('DISPLAY_TIMEZONE_LABEL') or '').strip() or 'IST'
+    )
+
+    # -------------------------------------------------------------------------
     # Timestamp display formats
     # -------------------------------------------------------------------------
     TIMESTAMP_DISPLAY_FORMAT = '%d %B %Y, %I:%M:%S %p'
     DATE_DISPLAY_FORMAT = '%d %b %Y'
     TIME_DISPLAY_FORMAT = '%I:%M:%S %p'
+
+    # -------------------------------------------------------------------------
+    # Prediction diagnostics
+    # -------------------------------------------------------------------------
+    # When enabled, every inference logs the full per-face probability vector
+    # (one entry per emotion class, in %) to the "diagnostics.prediction"
+    # logger. This exists purely to evaluate model quality from the logs; it
+    # never influences the predicted class or the stored result.
+    PREDICT_LOG_PROBABILITIES = _env_bool('PREDICT_LOG_PROBABILITIES', True)
 
     # -------------------------------------------------------------------------
     # Face detection (OpenCV Haar Cascade)

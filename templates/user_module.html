@@ -16,7 +16,7 @@
             </div>
             <div class="col-md-6">
                 <p><strong><i class="bi bi-calendar me-2"></i>Joined:</strong>
-                    {{ current_user.created_at.strftime('%d %B %Y, %I:%M %p') if current_user.created_at else '—' }}
+                    {{ (current_user.created_at|to_local).strftime('%d %B %Y, %I:%M %p') if current_user.created_at else '—' }}
                 </p>
             </div>
         </div>
@@ -61,8 +61,8 @@
                     {% for d in detections.items %}
                     <tr>
                         <td>{{ (detections.page - 1) * detections.per_page + loop.index }}</td>
-                        <td>{{ d.detected_at.strftime('%d %b %Y') if d.detected_at else '—' }}</td>
-                        <td>{{ d.detected_at.strftime('%I:%M:%S %p') if d.detected_at else '—' }}</td>
+                        <td>{{ (d.detected_at|to_local).strftime('%d %b %Y') if d.detected_at else '—' }}</td>
+                        <td>{{ (d.detected_at|to_local).strftime('%I:%M:%S %p') if d.detected_at else '—' }}</td>
                         <td>
                             <span class="badge bg-{{ 'primary' if d.detection_type == 'image' else 'info' }}">
                                 {{ d.detection_type|capitalize }}
@@ -158,8 +158,8 @@
                     {% for s in live_sessions %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td>{{ s.started_at.strftime('%d %b %Y, %I:%M %p') if s.started_at else '—' }}</td>
-                        <td>{{ s.ended_at.strftime('%d %b %Y, %I:%M %p') if s.ended_at else '—' }}</td>
+                        <td>{{ (s.started_at|to_local).strftime('%d %b %Y, %I:%M %p') if s.started_at else '—' }}</td>
+                        <td>{{ (s.ended_at|to_local).strftime('%d %b %Y, %I:%M %p') if s.ended_at else '—' }}</td>
                         <td>
                             {% if s.duration_seconds %}
                                 {{ '%02d:%02d'|format(s.duration_seconds // 60, s.duration_seconds % 60) }}

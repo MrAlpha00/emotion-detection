@@ -61,15 +61,15 @@
                                 <dt>Account status</dt>
                                 <dd>{{ ui.status_badge(user.is_active) }}</dd>
 
-                                <dt>Joined (UTC)</dt>
-                                <dd>{{ user.created_at.strftime('%d %b %Y, %H:%M:%S') if user.created_at }}</dd>
+                                <dt>Joined (IST)</dt>
+                                <dd>{{ (user.created_at|to_local).strftime('%d %b %Y, %H:%M:%S') if user.created_at }}</dd>
 
-                                <dt>Last updated (UTC)</dt>
-                                <dd>{{ user.updated_at.strftime('%d %b %Y, %H:%M:%S') if user.updated_at }}</dd>
+                                <dt>Last updated (IST)</dt>
+                                <dd>{{ (user.updated_at|to_local).strftime('%d %b %Y, %H:%M:%S') if user.updated_at }}</dd>
 
-                                <dt>Last login (UTC)</dt>
+                                <dt>Last login (IST)</dt>
                                 <dd>
-                                    {{ user.last_login_at.strftime('%d %b %Y, %H:%M:%S')
+                                    {{ (user.last_login_at|to_local).strftime('%d %b %Y, %H:%M:%S')
                                        if user.last_login_at else 'Never' }}
                                 </dd>
 
@@ -80,22 +80,22 @@
                             <hr>
 
                             <dl class="admin-detail-list mb-0">
-                                <dt>Last detection (UTC)</dt>
+                                <dt>Last detection (IST)</dt>
                                 <dd>
                                     {% if last_detection %}
-                                        {{ last_detection.detected_at.strftime('%d %b %Y, %H:%M:%S') }}
+                                        {{ (last_detection.detected_at|to_local).strftime('%d %b %Y, %H:%M:%S') }}
                                         <span class="badge bg-secondary ms-1">{{ last_detection.emotion }}</span>
                                     {% else %}
                                         Never
                                     {% endif %}
                                 </dd>
 
-                                <dt>Last activity (UTC)</dt>
+                                <dt>Last activity (IST)</dt>
                                 <dd>
                                     {% if last_activity %}
                                         {{ ui.activity_badge(last_activity.activity_type) }}
                                         <small class="text-muted d-block">
-                                            {{ last_activity.created_at.strftime('%d %b %Y, %H:%M:%S') }}
+                                            {{ (last_activity.created_at|to_local).strftime('%d %b %Y, %H:%M:%S') }}
                                         </small>
                                     {% else %}
                                         Never
@@ -255,7 +255,7 @@
                         <table class="table table-sm admin-table mb-0">
                             <thead>
                                 <tr>
-                                    <th>Date / Time (UTC)</th>
+                                    <th>Date / Time (IST)</th>
                                     <th>Type</th>
                                     <th>Emotion</th>
                                     <th class="text-end">Confidence</th>
@@ -269,7 +269,7 @@
                             {% for row in detections.items %}
                                 <tr>
                                     <td>
-                                        {{ row.detected_at.strftime('%Y-%m-%d %H:%M:%S') if row.detected_at }}
+                                        {{ (row.detected_at|to_local).strftime('%Y-%m-%d %H:%M:%S') if row.detected_at }}
                                     </td>
                                     <td>
                                         <span class="badge bg-{{ 'info' if row.detection_type == 'camera' else 'secondary' }}">
@@ -315,8 +315,8 @@
                         <table class="table table-sm admin-table mb-0">
                             <thead>
                                 <tr>
-                                    <th>Started (UTC)</th>
-                                    <th>Ended (UTC)</th>
+                                    <th>Started (IST)</th>
+                                    <th>Ended (IST)</th>
                                     <th class="text-end">Duration</th>
                                     <th>Dominant emotion</th>
                                     <th class="text-end">Avg confidence</th>
@@ -326,8 +326,8 @@
                             <tbody>
                             {% for row in live_sessions %}
                                 <tr>
-                                    <td>{{ row.started_at.strftime('%Y-%m-%d %H:%M:%S') if row.started_at }}</td>
-                                    <td>{{ row.ended_at.strftime('%Y-%m-%d %H:%M:%S') if row.ended_at else 'In progress' }}</td>
+                                    <td>{{ (row.started_at|to_local).strftime('%Y-%m-%d %H:%M:%S') if row.started_at }}</td>
+                                    <td>{{ (row.ended_at|to_local).strftime('%Y-%m-%d %H:%M:%S') if row.ended_at else 'In progress' }}</td>
                                     <td class="text-end">{{ row.duration_minutes }} min</td>
                                     <td>{{ row.dominant_emotion or '—' }}</td>
                                     <td class="text-end">
@@ -356,7 +356,7 @@
                         <table class="table table-sm admin-table mb-0">
                             <thead>
                                 <tr>
-                                    <th>When (UTC)</th>
+                                    <th>When (IST)</th>
                                     <th>Activity</th>
                                     <th>IP address</th>
                                     <th>User agent</th>
@@ -366,7 +366,7 @@
                             <tbody>
                             {% for row in activities %}
                                 <tr>
-                                    <td>{{ row.created_at.strftime('%Y-%m-%d %H:%M:%S') if row.created_at }}</td>
+                                    <td>{{ (row.created_at|to_local).strftime('%Y-%m-%d %H:%M:%S') if row.created_at }}</td>
                                     <td>{{ ui.activity_badge(row.activity_type) }}</td>
                                     <td><small>{{ row.ip_address or '—' }}</small></td>
                                     <td><small class="text-muted">{{ (row.user_agent or '')[:70] }}</small></td>

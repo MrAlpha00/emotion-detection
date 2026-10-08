@@ -216,7 +216,7 @@
                         <table class="table table-sm admin-table mb-0">
                             <thead>
                                 <tr>
-                                    <th>When (UTC)</th>
+                                    <th>When (IST)</th>
                                     <th>User</th>
                                     <th>Type</th>
                                     <th>Emotion</th>
@@ -228,7 +228,7 @@
                             <tbody>
                             {% for row in recent_detections %}
                                 <tr>
-                                    <td>{{ row.detected_at.strftime('%Y-%m-%d %H:%M:%S') if row.detected_at }}</td>
+                                    <td>{{ (row.detected_at|to_local).strftime('%Y-%m-%d %H:%M:%S') if row.detected_at }}</td>
                                     <td>
                                         <a href="{{ url_for('admin.user_detail', user_id=row.user_id) }}">
                                             {{ row.username }}

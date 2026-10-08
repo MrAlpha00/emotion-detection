@@ -104,9 +104,9 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>Detected at (UTC)</th>
+                                        <th>Detected at (IST)</th>
                                         <td>
-                                            {{ detection.detected_at.strftime('%Y-%m-%d %H:%M:%S')
+                                            {{ (detection.detected_at|to_local).strftime('%Y-%m-%d %H:%M:%S')
                                                if detection.detected_at else '—' }}
                                         </td>
                                     </tr>
@@ -122,9 +122,9 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>Created at (UTC)</th>
+                                        <th>Created at (IST)</th>
                                         <td>
-                                            {{ detection.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                                            {{ (detection.created_at|to_local).strftime('%Y-%m-%d %H:%M:%S')
                                                if detection.created_at else '—' }}
                                         </td>
                                     </tr>

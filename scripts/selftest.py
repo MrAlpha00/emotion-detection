@@ -30,6 +30,9 @@ os.environ.pop('VERCEL', None)
 os.environ.pop('SUPABASE_URL', None)
 os.environ.pop('SUPABASE_SECRET_KEY', None)
 os.environ.pop('SUPABASE_KEY', None)
+# The class-order check below asserts the documented default, so a developer's
+# local override must not silently satisfy (or break) it by accident.
+os.environ.pop('EMOTION_LABELS_JSON', None)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -167,6 +170,29 @@ def main():
     app = build_app()
     app.config['WTF_CSRF_ENABLED'] = True
     client = make_client(app)
+
+    # --- 0. emotion class-label mapping ---------------------------------------
+    # model/finalfacialemotionmodel.keras is the checkpoint documented at
+    # https://huggingface.co/lokeshkumar79/facial-emotion-recognition, whose
+    # output order is Angry, Disgust, Fear, Happy, Neutral, Sad, Surprise.
+    # The list below maps those indices, and getting it wrong silently
+    # mislabels every prediction, so it is asserted explicitly.
+    def t_emotion_labels():
+        expected = [
+            'Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise',
+        ]
+        assert list(config.DEFAULT_EMOTION_LABELS) == expected, \
+            f'DEFAULT_EMOTION_LABELS is {config.DEFAULT_EMOTION_LABELS}, expected {expected}'
+        assert list(config.Config.EMOTION_LABELS) == expected, \
+            f'effective EMOTION_LABELS is {config.Config.EMOTION_LABELS}, expected {expected}'
+        assert config.Config.NUM_EMOTION_CLASSES == 7, config.Config.NUM_EMOTION_CLASSES
+        # The previous, incorrect order must never be what indices map to.
+        old = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
+        assert list(config.Config.EMOTION_LABELS) != old, \
+            'the old mislabelled class order is active'
+        return True
+
+    check('Emotion labels match the documented model output order', t_emotion_labels)
 
     # --- 1. health ------------------------------------------------------------
     def t_health():

@@ -14,7 +14,7 @@ without changing the application code.
 - **Live detection** — streaming webcam analysis with per-session summaries
 - **Face detection** — OpenCV Haar cascade; a frame with no face is reported as
   such rather than guessed at
-- **Seven-emotion classification** — Angry, Disgust, Fear, Happy, Sad, Surprise, Neutral
+- **Seven-emotion classification** — Angry, Disgust, Fear, Happy, Neutral, Sad, Surprise
 - **History** — browse, preview and delete your own past detections
 - **Live session history** — duration, dominant emotion, average confidence
 - **Excel export** — formatted `.xlsx` of your own history, or an admin workbook
@@ -165,6 +165,29 @@ Generate a secret key with:
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
+
+### Emotion class order
+
+The bundled `model/finalfacialemotionmodel.keras` is the checkpoint documented at
+[lokeshkumar79/facial-emotion-recognition](https://huggingface.co/lokeshkumar79/facial-emotion-recognition).
+Its softmax output order — and therefore `config.DEFAULT_EMOTION_LABELS` — is:
+
+| Index | Label    |
+| ----- | -------- |
+| 0     | Angry    |
+| 1     | Disgust  |
+| 2     | Fear     |
+| 3     | Happy    |
+| 4     | Neutral  |
+| 5     | Sad      |
+| 6     | Surprise |
+
+The saved `.keras` archive does not embed class names, so the mapping is
+documented here instead of being read from the file. `EMOTION_LABELS_JSON` is an
+override **only** for swapping in a checkpoint trained with a different order; it
+must list the seven labels in output order. Leaving it unset uses the documented
+default above. Getting the order wrong silently mislabels every prediction, so
+`scripts/selftest.py` verifies the default order on every run.
 
 ### A note on `DATABASE_URL` passwords
 
@@ -375,14 +398,15 @@ submitted form. Registration always creates a `user`.
 
 ## Testing
 
-`python scripts/selftest.py` runs 27 checks against a temporary SQLite database
+`python scripts/selftest.py` runs 29 checks against a temporary SQLite database
 and prints `PASS` / `FAIL` / `BLOCKED` per check with a summary.
 
-It covers: health endpoint, registration and login, login metrics and audit
-writes, CSRF on forms and JSON, role and deactivation enforcement, admin page
-rendering, cross-user access denial, upload rejection and size limits, live
-session token enforcement (with inference stubbed), model-unavailable handling,
-export contents, deletion confirmation and security headers.
+It covers: the documented emotion class-label order, health endpoint,
+registration and login, login metrics and audit writes, CSRF on forms and JSON,
+role and deactivation enforcement, admin page rendering, cross-user access
+denial, upload rejection and size limits, live session token enforcement (with
+inference stubbed), model-unavailable handling, export contents, deletion
+confirmation and security headers.
 
 Anything the environment prevents is reported as `BLOCKED` rather than silently
 skipped or optimistically marked as passing.
@@ -398,8 +422,9 @@ skipped or optimistically marked as passing.
 - [ ] `flask db upgrade` has been applied to that database
 - [ ] The Storage bucket exists and is **private**
 - [ ] `SUPABASE_SECRET_KEY` is a server-side key, not the publishable key
-- [ ] The model file is present and the class order in `EMOTION_LABELS_JSON` is
-      correct for your model
+- [ ] The model file is present and the active class order matches it — either
+      the documented `DEFAULT_EMOTION_LABELS`, or an `EMOTION_LABELS_JSON` that
+      is correct for your model (and not the old default order)
 - [ ] `python scripts/selftest.py` passes
 
 ### A real constraint on Vercel
@@ -503,8 +528,11 @@ upgrade`.
 ## Licence and academic context
 
 Built as an academic project. The bundled Keras model is provided as-is; the
-emotion labels are not embedded in the file, so confirm the mapping in
-`EMOTION_LABELS_JSON` against your training code before relying on predictions.
+emotion labels are not embedded in the file, so the default order is taken from
+the checkpoint documentation
+([lokeshkumar79/facial-emotion-recognition](https://huggingface.co/lokeshkumar79/facial-emotion-recognition))
+and can be overridden with `EMOTION_LABELS_JSON` if you swap in a model trained
+with a different order.
 
 
 

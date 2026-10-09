@@ -155,7 +155,7 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 # Emotion class labels (see the long comment inside Config for the rationale)
 # -----------------------------------------------------------------------------
 DEFAULT_EMOTION_LABELS = [
-    'Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral',
+    'Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise',
 ]
 
 
@@ -364,18 +364,18 @@ class Config:
     MODEL_CHANNELS_LAST = True           # (None, H, W, C) layout
     MODEL_NORMALIZATION_FACTOR = 255.0   # pixel / 255 -> [0, 1]
 
-# -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Emotion class labels
     # -------------------------------------------------------------------------
     # ORDER MATTERS - getting this wrong silently mislabels every prediction.
     #
     # Evidence for this order:
-    #   * The project's README documents the model's output as
-    #     [Angry, Disgust, Fear, Happy, Sad, Surprise, Neutral].
-    #   * The architecture in model/finalfacialemotionmodel.keras is the canonical
-    #     Keras CNN FER-2013 example (Conv2D/BN/MaxPool/Dropout/Dense, 48x48x1
-    #     input, 7-way softmax), whose published class_names list is exactly
-    #     this ordering.
+    #   * model/finalfacialemotionmodel.keras is the checkpoint documented at
+    #     https://huggingface.co/lokeshkumar79/facial-emotion-recognition,
+    #     whose output order is
+    #     [Angry, Disgust, Fear, Happy, Neutral, Sad, Surprise].
+    #   * The architecture is the canonical Keras CNN FER-2013 example
+    #     (Conv2D/BN/MaxPool/Dropout/Dense, 48x48x1 input, 7-way softmax).
     #
     # LIMITATION: the saved .keras archive does NOT embed the class names (its
     # config.json carries no label metadata and model.weights.h5 has no label

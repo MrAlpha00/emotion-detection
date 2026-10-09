@@ -130,16 +130,6 @@ optional for a brand-new local database. It is **not** optional for an existing
 one: `create_all()` never adds columns to a table that already exists, which is
 exactly what `db upgrade` is for.
 
-### Running the tests
-
-```bash
-python scripts/selftest.py
-```
-
-The suite builds a throwaway SQLite database, exercises authentication,
-authorisation, CSRF, uploads, live sessions, ownership, exports and admin pages,
-then deletes it. It never touches `database/emotion_app.db`.
-
 ---
 
 ## Configuration

@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 admin_bp = Blueprint('admin', __name__)
 
 # Canonical emotion order used for every distribution report.
-EMOTIONS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
+EMOTIONS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
 
 # Admin-generated Excel exports are bounded so a huge production database cannot
 # exhaust serverless memory. The cap is reported in the UI when it is hit.

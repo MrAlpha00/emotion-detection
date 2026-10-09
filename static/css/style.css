@@ -426,13 +426,13 @@ main {
     font-size: 0.8rem;
 }
 
-.badge-Happy { background: #D5F5E3; color: #1E8449; }
-.badge-Sad { background: #AED6F1; color: #1A5276; }
 .badge-Angry { background: #F5B7B1; color: #922B21; }
-.badge-Surprise { background: #FAD7A0; color: #7E5109; }
-.badge-Fear { background: #D7BDE2; color: #6C3483; }
 .badge-Disgust { background: #A9DFBF; color: #1E8449; }
+.badge-Fear { background: #D7BDE2; color: #6C3483; }
+.badge-Happy { background: #D5F5E3; color: #1E8449; }
 .badge-Neutral { background: #D5D8DC; color: #2C3E50; }
+.badge-Sad { background: #AED6F1; color: #1A5276; }
+.badge-Surprise { background: #FAD7A0; color: #7E5109; }
 
 /* --- Empty State --- */
 .empty-state {
